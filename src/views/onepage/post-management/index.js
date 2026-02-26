@@ -10,22 +10,34 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import PublishIcon from '@mui/icons-material/Publish'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import TwitterIcon from '@mui/icons-material/Twitter'
-import { Box, Button, Card, Chip, Divider, Menu, MenuItem, Paper, Tab, Tabs, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  Menu,
+  MenuItem,
+  Pagination,
+  Paper,
+  Tab,
+  Tabs,
+  Typography
+} from '@mui/material'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { format, isThisWeek, isToday, isTomorrow } from 'date-fns'
-import { useRouter } from 'next/router'
+import { format, isToday, isTomorrow } from 'date-fns'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { postsAPI, socialAccountsAPI } from 'src/services/socialMediaService'
+import { socialAccountsAPI } from 'src/services/socialMediaService'
 import DeleteDialog from './DeleteDialog'
 import EditDialog from './EditDialog'
 import Filter from './Filter'
 import PostList from './PostList'
 import CreatePostDialog from './create- dialog/createPostDialog'
+import api from 'utils/api'
 
 const PostManagement = () => {
-  const router = useRouter()
   const [posts, setPosts] = useState([])
   const [filteredPosts, setFilteredPosts] = useState([])
   const [selectedPost, setSelectedPost] = useState(null)
@@ -41,88 +53,50 @@ const PostManagement = () => {
   const [connectedAccounts, setConnectedAccounts] = useState([])
   const [open, setOpen] = useState(false)
 
+  console.log(posts, 'posts')
+
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
+  })
+
+  const [counts, setCounts] = useState({
+    all: 0,
+    scheduled: 0,
+    published: 0,
+    failed: 0,
+    drafts: 0,
+    today: 0,
+    tomorrow: 0,
+    thisWeek: 0
+  })
+
   const [editFormData, setEditFormData] = useState({
     content: '',
     scheduledAt: null,
     platforms: [],
     mediaFiles: [],
-    status: 'draft'
+    status: 'CANCELLED'
   })
 
+  const handlePageChange = (event, value) => {
+    setPagination(prev => ({ ...prev, page: value }))
+  }
+
   const filterPosts = useCallback(() => {
-    let filtered = [...posts]
-
-    // Filter by tab (status)
-    switch (activeTab) {
-      case 0: // All
-        filtered = posts
-        break
-      case 1: // Scheduled
-        filtered = posts.filter(post => post.status === 'scheduled')
-        break
-      case 2: // Published
-        filtered = posts.filter(post => post.status === 'published')
-        break
-      case 3: // Failed
-        filtered = posts.filter(post => post.status === 'failed')
-        break
-      case 4: // Drafts
-        filtered = posts.filter(post => post.status === 'draft')
-        break
-      case 5: // Today (Scheduled)
-        filtered = posts.filter(
-          post => post.status === 'scheduled' && post.scheduledAt && isToday(new Date(post.scheduledAt))
-        )
-        break
-      case 6: // Tomorrow (Scheduled)
-        filtered = posts.filter(
-          post => post.status === 'scheduled' && post.scheduledAt && isTomorrow(new Date(post.scheduledAt))
-        )
-        break
-      case 7: // This Week (Scheduled)
-        filtered = posts.filter(
-          post => post.status === 'scheduled' && post.scheduledAt && isThisWeek(new Date(post.scheduledAt))
-        )
-        break
-      default:
-        break
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(post => post.content.toLowerCase().includes(searchQuery.toLowerCase()))
-    }
-
-    // Filter by platform
-    if (platformFilter) {
-      filtered = filtered.filter(post => post.platforms.some(p => p.platform === platformFilter))
-    }
-
-    // Filter by status (additional filter)
-    if (statusFilter) {
-      filtered = filtered.filter(post => post.status === statusFilter)
-    }
-
-    // Sort by appropriate date based on status
-    filtered.sort((a, b) => {
-      if (a.status === 'scheduled' && b.status === 'scheduled') {
-        return new Date(a.scheduledAt) - new Date(b.scheduledAt) // Earliest scheduled first
-      }
-
-      return new Date(b.createdAt) - new Date(a.createdAt) // Newest created first
-    })
-
-    setFilteredPosts(filtered)
-  }, [posts, activeTab, searchQuery, platformFilter, statusFilter])
+    // Since filtering is now handled by the API, we just set the filtered posts to the current posts
+    setFilteredPosts(posts)
+  }, [posts])
 
   useEffect(() => {
-    fetchPosts()
     fetchConnectedAccounts()
   }, [])
 
   useEffect(() => {
     filterPosts()
-  }, [posts, activeTab, searchQuery, platformFilter, statusFilter, filterPosts])
+  }, [posts, filterPosts])
 
   const fetchConnectedAccounts = async () => {
     try {
@@ -133,33 +107,58 @@ const PostManagement = () => {
     }
   }
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await postsAPI.getPosts()
-      setPosts(response.data)
+
+      // Map activeTab to filter parameter
+      const filterMap = {
+        0: 'ALL',
+        1: 'SCHEDULED',
+        2: 'PUBLISHED',
+        3: 'FAILED',
+        4: 'DRAFTS',
+        5: 'TODAY',
+        6: 'TOMORROW',
+        7: 'THIS_WEEK'
+      }
+
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        filter: filterMap[activeTab],
+        ...(searchQuery && { search: searchQuery }),
+        ...(platformFilter && { platform: platformFilter }),
+        ...(statusFilter && { status: statusFilter })
+      }
+
+      const response = await api.get('v1/social-media-post/all', { params })
+
+      if (response.data.data.success) {
+        setPosts(response.data.data.data.posts)
+        setPagination(response.data.data.data.pagination)
+        setCounts(response.data.data.data.counts)
+      }
     } catch (error) {
       toast.error('Error fetching posts')
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab, searchQuery, platformFilter, statusFilter, pagination.page, pagination.limit])
+
+  useEffect(() => {
+    fetchPosts()
+  }, [fetchPosts])
 
   const handleEditPost = post => {
     setSelectedPost(post)
 
-    // Map platform data properly
+    // Map platform data properly - using the new API structure
     const platformIds =
       post.platforms
         ?.map(p => {
-          // Handle both old format (platform string) and new format (id)
-          if (typeof p === 'string') {
-            const account = connectedAccounts.find(acc => acc.platform === p)
-
-            return account?.id
-          }
-
-          return p.id || p.platform
+          // New API structure has id and provider
+          return p.id
         })
         .filter(Boolean) || []
 
@@ -167,8 +166,8 @@ const PostManagement = () => {
       content: post.content || '',
       scheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null,
       platforms: platformIds,
-      mediaFiles: post.mediaFiles || [],
-      status: post.status || 'draft'
+      mediaFiles: post.media || [],
+      status: post.status || 'CANCELLED'
     }
 
     setEditFormData(formData)
@@ -184,7 +183,7 @@ const PostManagement = () => {
 
   const handleDuplicatePost = async post => {
     try {
-      await postsAPI.duplicatePost(post.id)
+      await api.post(`/posts/${post.id}/duplicate`)
       toast.success('Post duplicated successfully')
       fetchPosts()
     } catch (error) {
@@ -195,7 +194,7 @@ const PostManagement = () => {
 
   const handlePublishNow = async post => {
     try {
-      await postsAPI.publishNow(post.id)
+      await api.post(`/posts/${post.id}/publish`)
       toast.success('Post published successfully')
       fetchPosts()
     } catch (error) {
@@ -206,7 +205,7 @@ const PostManagement = () => {
 
   const handleRetryPost = async post => {
     try {
-      await postsAPI.schedulePost(post.id, { scheduledAt: new Date() })
+      await api.post(`/posts/${post.id}/schedule`, { scheduledAt: new Date() })
       toast.success('Post retry initiated')
       fetchPosts()
     } catch (error) {
@@ -286,7 +285,7 @@ const PostManagement = () => {
 
   const handleSaveEdit = async () => {
     try {
-      await postsAPI.updatePost(selectedPost.id, editFormData)
+      await api.put(`/posts/${selectedPost.id}`, editFormData)
       toast.success('Post updated successfully')
       setEditDialogOpen(false)
       fetchPosts()
@@ -297,7 +296,7 @@ const PostManagement = () => {
 
   const handleConfirmDelete = async () => {
     try {
-      await postsAPI.deletePost(selectedPost.id)
+      await api.delete(`/posts/${selectedPost.id}`)
       toast.success('Post deleted successfully')
       setDeleteDialogOpen(false)
       fetchPosts()
@@ -308,10 +307,11 @@ const PostManagement = () => {
 
   const getStatusIcon = status => {
     const icons = {
-      scheduled: <ScheduleIcon />,
-      published: <CheckCircleIcon />,
-      failed: <ErrorIcon />,
-      draft: <DraftsIcon />
+      PENDING: <ScheduleIcon />,
+      PUBLISHED: <CheckCircleIcon />,
+      PARTIAL: <CheckCircleIcon />,
+      FAILED: <ErrorIcon />,
+      CANCELLED: <DraftsIcon />
     }
 
     return icons[status] || <DraftsIcon />
@@ -319,10 +319,11 @@ const PostManagement = () => {
 
   const getStatusColor = status => {
     const colors = {
-      scheduled: 'warning',
-      published: 'success',
-      failed: 'error',
-      draft: 'primary'
+      PENDING: 'warning',
+      PUBLISHED: 'success',
+      PARTIAL: 'info',
+      FAILED: 'error',
+      CANCELLED: 'primary'
     }
 
     return colors[status] || 'default'
@@ -331,23 +332,23 @@ const PostManagement = () => {
   const getPlatformIcon = platform => {
     const icons = {
       facebook: <FacebookIcon sx={{ fontSize: 16 }} />,
-      instagram: <InstagramIcon sx={{ fontSize: 16 }} />,
+      'instagram-business': <InstagramIcon sx={{ fontSize: 16 }} />,
       linkedin: <LinkedInIcon sx={{ fontSize: 16 }} />,
       twitter: <TwitterIcon sx={{ fontSize: 16 }} />
     }
 
-    return icons[platform] || <FacebookIcon sx={{ fontSize: 16 }} />
+    return icons[platform?.toLowerCase()] || <FacebookIcon sx={{ fontSize: 16 }} />
   }
 
   const getPlatformColor = platform => {
     const colors = {
       facebook: '#1877f2',
-      instagram: '#e4405f',
+      'instagram-business': '#e4405f',
       linkedin: '#0077b5',
       twitter: '#1da1f2'
     }
 
-    return colors[platform] || '#1877f2'
+    return colors[platform?.toLowerCase()] || '#1877f2'
   }
 
   const truncateText = (text, maxLength = 100) => {
@@ -355,9 +356,9 @@ const PostManagement = () => {
   }
 
   const getPostDate = post => {
-    if (post.status === 'published' && post.publishedAt) {
+    if ((post.status === 'PUBLISHED' || post.status === 'PARTIAL') && post.publishedAt) {
       return `Published: ${format(new Date(post.publishedAt), 'MMM dd, yyyy HH:mm')}`
-    } else if (post.status === 'scheduled' && post.scheduledAt) {
+    } else if (post.status === 'PENDING' && post.scheduledAt) {
       const scheduledDate = new Date(post.scheduledAt)
       if (isToday(scheduledDate)) {
         return `Today at ${format(scheduledDate, 'HH:mm')}`
@@ -374,15 +375,14 @@ const PostManagement = () => {
   const tabLabels = ['All', 'Scheduled', 'Published', 'Failed', 'Drafts', 'Today', 'Tomorrow', 'This Week']
 
   const statusCounts = {
-    all: posts.length,
-    scheduled: posts.filter(p => p.status === 'scheduled').length,
-    published: posts.filter(p => p.status === 'published').length,
-    failed: posts.filter(p => p.status === 'failed').length,
-    draft: posts.filter(p => p.status === 'draft').length,
-    today: posts.filter(p => p.status === 'scheduled' && p.scheduledAt && isToday(new Date(p.scheduledAt))).length,
-    tomorrow: posts.filter(p => p.status === 'scheduled' && p.scheduledAt && isTomorrow(new Date(p.scheduledAt)))
-      .length,
-    thisWeek: posts.filter(p => p.status === 'scheduled' && p.scheduledAt && isThisWeek(new Date(p.scheduledAt))).length
+    all: counts.all || 0,
+    scheduled: counts.scheduled || 0,
+    published: counts.published || 0,
+    failed: counts.failed || 0,
+    draft: counts.drafts || 0,
+    today: counts.today || 0,
+    tomorrow: counts.tomorrow || 0,
+    thisWeek: counts.thisWeek || 0
   }
 
   return (
@@ -472,7 +472,21 @@ const PostManagement = () => {
             searchQuery={searchQuery}
             platformFilter={platformFilter}
             statusFilter={statusFilter}
+            loading={loading}
           />
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Pagination
+                count={pagination.totalPages}
+                page={pagination.page}
+                onChange={handlePageChange}
+                color='primary'
+                size='large'
+              />
+            </Box>
+          )}
         </Paper>
 
         {/* Action Menu */}
@@ -485,13 +499,13 @@ const PostManagement = () => {
             <ContentCopyIcon sx={{ mr: 2 }} />
             Duplicate
           </MenuItem>
-          {selectedPost?.status === 'scheduled' && (
+          {selectedPost?.status === 'PENDING' && (
             <MenuItem onClick={() => handlePublishNow(selectedPost)}>
               <PublishIcon sx={{ mr: 2 }} />
               Publish Now
             </MenuItem>
           )}
-          {selectedPost?.status === 'failed' && (
+          {selectedPost?.status === 'FAILED' && (
             <MenuItem onClick={() => handleRetryPost(selectedPost)}>
               <PublishIcon sx={{ mr: 2 }} />
               Retry Post

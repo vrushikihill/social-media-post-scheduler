@@ -101,24 +101,24 @@ const PostList = ({
                             sx={{
                               width: 22,
                               height: 22,
-                              bgcolor: getPlatformColor(platform.platform),
+                              bgcolor: getPlatformColor(platform.provider),
                               color: 'common.white'
                             }}
                           >
-                            {getPlatformIcon(platform.platform)}
+                            {getPlatformIcon(platform.provider)}
                           </Avatar>
                         ))}
                       </Box>
 
                       {/* Media Files */}
-                      {post.mediaFiles.length > 0 && (
+                      {post.media.length > 0 && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                           <Typography variant='caption' color='text.secondary'>
                             Media:
                           </Typography>
                           <Chip
                             size='small'
-                            label={`${post.mediaFiles.length} file(s)`}
+                            label={`${post.media.length} file(s)`}
                             color='primary'
                             variant='outlined'
                           />

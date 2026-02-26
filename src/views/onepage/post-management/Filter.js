@@ -1,3 +1,4 @@
+import SearchIcon from '@mui/icons-material/Search'
 import {
   Box,
   Button,
@@ -10,15 +11,13 @@ import {
   Select,
   TextField
 } from '@mui/material'
-import React from 'react'
-import SearchIcon from '@mui/icons-material/Search'
 
-const Filter = ({ setSearchQuery, platformFilter, setPlatformFilter, statusFilter, setStatusFilter, searchQuery }) => {
+const Filter = ({ setSearchQuery, platformFilter, setPlatformFilter, setStatusFilter, searchQuery }) => {
   return (
     <Box>
       <Grid container spacing={3} alignItems='center'>
         {/* Search */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={5}>
           <TextField
             fullWidth
             size='small'
@@ -36,7 +35,7 @@ const Filter = ({ setSearchQuery, platformFilter, setPlatformFilter, statusFilte
         </Grid>
 
         {/* Platform Filter */}
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={5}>
           <FormControl fullWidth size='small'>
             <InputLabel>Platform</InputLabel>
             <Select
@@ -46,27 +45,9 @@ const Filter = ({ setSearchQuery, platformFilter, setPlatformFilter, statusFilte
             >
               <MenuItem value=''>All Platforms</MenuItem>
               <MenuItem value='facebook'>Facebook</MenuItem>
-              <MenuItem value='instagram'>Instagram</MenuItem>
+              <MenuItem value='instagram-business'>Instagram</MenuItem>
               <MenuItem value='linkedin'>LinkedIn</MenuItem>
               <MenuItem value='twitter'>Twitter</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-
-        {/* Status Filter */}
-        <Grid item xs={12} md={3}>
-          <FormControl fullWidth size='small'>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              input={<OutlinedInput label='Status' />}
-            >
-              <MenuItem value=''>All Status</MenuItem>
-              <MenuItem value='scheduled'>Scheduled</MenuItem>
-              <MenuItem value='published'>Published</MenuItem>
-              <MenuItem value='failed'>Failed</MenuItem>
-              <MenuItem value='draft'>Draft</MenuItem>
             </Select>
           </FormControl>
         </Grid>
