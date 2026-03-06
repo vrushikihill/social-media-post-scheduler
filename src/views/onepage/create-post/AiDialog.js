@@ -92,8 +92,8 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
       <Box sx={{ 
         p: 4, 
         borderBottom: '1px solid',
-        borderColor: '#F1F5F9',
-        color: '#1E293B',
+        borderColor: 'divider',
+        color: 'text.primary',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -116,12 +116,12 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
             <Typography variant='h6' sx={{ fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
               Creative Assistant
             </Typography>
-            <Typography variant='caption' sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <Typography variant='caption' sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               AI Studio Powered
             </Typography>
           </Box>
         </Box>
-        <IconButton onClick={() => setAiDialogOpen(false)} sx={{ color: '#94A3B8', '&:hover': { color: '#EF4444', bgcolor: '#FEF2F2' } }}>
+        <IconButton onClick={() => setAiDialogOpen(false)} sx={{ color: 'text.disabled', '&:hover': { color: 'error.main', bgcolor: 'error.main' + '10' } }}>
           <CloseIcon fontSize='small' />
         </IconButton>
       </Box>
@@ -131,12 +131,13 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
         <Box sx={{ 
           flex: showResult ? '0 0 320px' : '1', 
           p: 5, 
-          bgcolor: showResult ? '#F8FAFC' : 'white',
-          borderRight: showResult ? '1px solid #E2E8F0' : 'none',
+          bgcolor: showResult ? (theme.palette.mode === 'light' ? '#F8FAFC' : theme.palette.customColors.bodyBg) : 'background.paper',
+          borderRight: showResult ? '1px solid' : 'none',
+          borderColor: 'divider',
           transition: 'all 0.3s'
         }}>
           <Box sx={{ mb: 4 }}>
-            <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 800, color: '#1E293B' }}>
+            <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 800, color: 'text.primary' }}>
               Post Inspiration
             </Typography>
             <TextField
@@ -149,9 +150,9 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
               sx={{ 
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '16px',
-                  bgcolor: 'white',
-                  '& fieldset': { borderColor: '#E2E8F0' },
-                  '&:hover fieldset': { borderColor: '#CBD5E1' },
+                  bgcolor: 'background.paper',
+                  '& fieldset': { borderColor: 'divider' },
+                  '&:hover fieldset': { borderColor: 'text.disabled' },
                   '&.Mui-focused fieldset': { borderColor: primaryColor, borderWidth: '2px' }
                 },
                 '& .MuiInputBase-input': { p: 1, fontSize: '0.95rem' }
@@ -160,7 +161,7 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
           </Box>
 
           <Box>
-            <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 800, color: '#1E293B' }}>
+            <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 800, color: 'text.primary' }}>
               Desired Vibe
             </Typography>
             <Stack direction='row' spacing={1} flexWrap='wrap' useFlexGap>
@@ -176,17 +177,17 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
                       borderRadius: '12px',
                       cursor: 'pointer',
                       border: '1.5px solid',
-                      borderColor: active ? color : '#F1F5F9',
-                      bgcolor: active ? `${color}10` : '#F8FAFC',
-                      color: active ? color : '#64748B',
+                      borderColor: active ? color : 'divider',
+                      bgcolor: active ? `${color}10` : 'background.default',
+                      color: active ? color : 'text.secondary',
                       fontWeight: 700,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.025em',
                       transition: 'all 0.2s',
                       '&:hover': {
-                        borderColor: active ? color : '#CBD5E1',
-                        bgcolor: active ? `${color}15` : '#F1F5F9'
+                        borderColor: active ? color : 'text.disabled',
+                        bgcolor: active ? `${color}15` : 'action.hover'
                       }
                     }}
                   >
@@ -223,11 +224,11 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
         {/* Result Section */}
         {showResult && (
           <Fade in={showResult}>
-            <Box sx={{ flex: 1, p: 5, display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+            <Box sx={{ flex: 1, p: 5, display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <NoteAddIcon sx={{ color: primaryColor, fontSize: '1.2rem' }} />
-                  <Typography variant='subtitle1' sx={{ fontWeight: 800, color: '#1E293B' }}>
+                  <Typography variant='subtitle1' sx={{ fontWeight: 800, color: 'text.primary' }}>
                     AI Result
                   </Typography>
                 </Box>
@@ -254,15 +255,16 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
                   flexGrow: 1,
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '16px',
-                    bgcolor: '#FBFDFF',
+                    bgcolor: theme.palette.mode === 'light' ? '#FBFDFF' : theme.palette.customColors.bodyBg,
                     p: 3,
-                    border: '1px solid #E2E8F0',
+                    border: '1px solid',
+                    borderColor: 'divider',
                     '& fieldset': { border: 'none' }
                   },
                   '& .MuiInputBase-input': {
                     fontSize: '1rem',
                     lineHeight: 1.6,
-                    color: '#334155'
+                    color: 'text.primary'
                   }
                 }}
               />
@@ -285,8 +287,8 @@ const AiDialog = ({ handleAIGenerate, aiDialogOpen, setAiDialogOpen, onApplyCont
                     borderRadius: '12px', 
                     fontWeight: 800, 
                     textTransform: 'none',
-                    bgcolor: '#1E293B',
-                    '&:hover': { bgcolor: 'black' }
+                    bgcolor: theme.palette.mode === 'light' ? '#1E293B' : 'primary.main',
+                    '&:hover': { bgcolor: theme.palette.mode === 'light' ? 'black' : 'primary.dark' }
                   }}
                 >
                   Use Content
