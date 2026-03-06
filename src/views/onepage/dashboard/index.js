@@ -1,16 +1,22 @@
 import { Box, Grid, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { analyticsAPI } from 'src/services/socialMediaService'
+import { activityAPI } from 'src/services/socialMediaService'
 import { facebookLogin } from 'src/utils/facebook'
 import Activity from './components/Activity'
 import FailedPosts from './components/FailedPosts'
 import PlatformStatus from './components/PlatformStatus'
 import RecentPosts from './components/RecentPosts'
 import UpcomingPosts from './components/UpcomingPosts'
-import FacebookIcon from '@mui/icons-material/Facebook'
+import PostAddIcon from '@mui/icons-material/PostAdd'
+import HubIcon from '@mui/icons-material/Hub'
+import TodayIcon from '@mui/icons-material/Today'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CancelIcon from '@mui/icons-material/Cancel'
 
 const Dashboard = () => {
+  const [loading, setLoading] = useState(true)
+
   const [dashboardStats, setDashboardStats] = useState({
     totalPosts: 0,
     connectedPlatforms: 0,
@@ -28,53 +34,71 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await analyticsAPI.getDashboardStats()
-      setDashboardStats(response.data)
+      setLoading(true)
+      const response = await activityAPI.getStats()
+
+      // console.log('Dashboard Stats Response:', response.data)
+
+      const data = response.data?.data || response.data
+      if (data) {
+        setDashboardStats({
+          totalPosts: data.totalPosts || 0,
+          connectedPlatforms: data.connectedPlatforms || 0,
+          todaysPosts: data.todaysPosts || 0,
+          avgEngagement: data.avgEngagement || '0%',
+          scheduledPosts: data.scheduledPosts || 0,
+          publishedPosts: data.publishedPosts || 0,
+          failedPosts: data.failedPosts || 0,
+          draftPosts: data.draftPosts || 0
+        })
+      }
     } catch (error) {
-      toast.error('Error fetching dashboard stats:', error)
+      // console.error('Error fetching dashboard stats:', error)
+      toast.error('Error fetching dashboard stats')
+    } finally {
+      setLoading(false)
     }
   }
 
-  // Mock data for development
   const activityData = [
     {
       label: 'Total Posts',
-      qty: dashboardStats.totalPosts || '24',
-      description: 'All time posts',
-      icon: '📝',
-      color: '#4299e1',
-      trend: {
-        type: 'up',
-        value: '+12%',
-        period: 'this month'
-      }
+      qty: dashboardStats.totalPosts,
+      description: 'Total posts in system',
+      icon: <PostAddIcon />,
+      color: '#4299e1'
     },
     {
       label: 'Connected Platforms',
-      qty: dashboardStats.connectedPlatforms || '4',
-      description: 'Active integrations',
-      icon: '🔗',
-      color: '#805ad5',
-      trend: {
-        type: 'up',
-        value: '+2',
-        period: 'new platforms'
-      }
+      qty: dashboardStats.connectedPlatforms,
+      description: 'Active accounts',
+      icon: <HubIcon />,
+      color: '#805ad5'
     },
     {
       label: "Today's Posts",
-      qty: dashboardStats.todaysPosts || '3',
+      qty: dashboardStats.todaysPosts,
       description: 'Scheduled for today',
-      icon: '📅',
-      color: '#38b2ac',
-      trend: {
-        type: 'up',
-        value: '+1',
-        period: 'from yesterday'
-      }
+      icon: <TodayIcon />,
+      color: '#38b2ac'
+    },
+    {
+      label: 'Published Posts',
+      qty: dashboardStats.publishedPosts,
+      description: 'Successfully published',
+      icon: <CheckCircleIcon />,
+      color: '#48bb78'
+    },
+    {
+      label: 'Failed Posts',
+      qty: dashboardStats.failedPosts,
+      description: 'Needs attention',
+      icon: <CancelIcon />,
+      color: '#f56565'
     }
   ]
 
+  // eslint-disable-next-line no-unused-vars
   const connectFacebook = async () => {
     try {
       const response = await facebookLogin({
@@ -122,7 +146,6 @@ const Dashboard = () => {
           <Typography variant='h5' sx={{ fontWeight: 600, mb: 1 }}>
             Social Media Dashboard
           </Typography>
-          <FacebookIcon onClick={connectFacebook} />
           <Typography variant='body2' color='text.secondary'>
             Manage your social media presence from one place
           </Typography>
@@ -131,7 +154,7 @@ const Dashboard = () => {
 
       <Grid container spacing={5.5}>
         {/* Statistics Cards */}
-        <Activity activityData={activityData} />
+        <Activity activityData={activityData} loading={loading} />
 
         {/* Platform Status */}
         <Grid item xs={12} md={12}>
@@ -140,12 +163,12 @@ const Dashboard = () => {
 
         {/* Upcoming Posts */}
         <Grid item xs={12} md={6}>
-          <UpcomingPosts />
+          <UpcomingPosts loading={loading} />
         </Grid>
 
         {/* Recent Posts */}
         <Grid item xs={12} md={6}>
-          <RecentPosts />
+          <RecentPosts loading={loading} />
         </Grid>
 
         {/* Failed Posts Alert */}

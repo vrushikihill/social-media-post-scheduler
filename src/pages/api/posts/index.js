@@ -32,7 +32,7 @@ export default async function handler(req, res) {
         'https://ceramic-ihill.s3.ap-south-1.amazonaws.com/media/vrushik/media-assets/78d357d1779af05a5f6c56381dcbc567.jpg'
     }))
 
-    console.log(mediaFiles, '>>>>>>>>>>>>>>>>>>> mediaFiles')
+    // console.log(mediaFiles, '>>>>>>>>>>>>>>>>>>> mediaFiles')
 
     const isInstagram = platforms.some(p => p === 2 || p.platform === 'instagram')
     const isFacebook = platforms.some(p => p === 1 || p.platform === 'facebook')
@@ -69,9 +69,9 @@ export default async function handler(req, res) {
         const pageId = process.env.FACEBOOK_ACCOUNT_ID
 
         if (!accessToken) {
-          console.error('[IG] Missing access token')
+          // console.error('[IG] Missing access token')
         } else {
-          console.log('[IG] Starting Flow...')
+          // console.log('[IG] Starting Flow...')
 
           let igUserId = process.env.INSTAGRAM_ACCOUNT_ID
 
@@ -88,17 +88,17 @@ export default async function handler(req, res) {
               igUserId = accountRes.data?.instagram_business_account?.id || igUserId
 
               if (igUserId) {
-                console.log('[IG] Using Business Account:', igUserId)
+                // console.log('[IG] Using Business Account:', igUserId)
               }
             } catch (err) {
-              console.warn('[IG] Linked account fetch failed, using env ID')
+              // console.warn('[IG] Linked account fetch failed, using env ID')
             }
           }
 
           if (!igUserId) {
-            console.error('[IG] No Instagram User ID found')
+            // console.error('[IG] No Instagram User ID found')
           } else if (!mediaFiles.length) {
-            console.error('[IG] Media required for Instagram')
+            // console.error('[IG] Media required for Instagram')
           } else {
             const mediaFile = mediaFiles[0]
             const mediaType = getMediaType(mediaFile)
@@ -106,9 +106,9 @@ export default async function handler(req, res) {
 
             // 🔴 IMPORTANT FIX: Only validate URL, NOT absolutePath
             if (!mediaUrl || mediaUrl.includes('localhost')) {
-              console.warn('[IG] SKIPPED: Media URL must be public HTTPS')
+              // console.warn('[IG] SKIPPED: Media URL must be public HTTPS')
             } else {
-              console.log('[IG] Creating media container:', mediaUrl)
+              // console.log('[IG] Creating media container:', mediaUrl)
 
               const params = {
                 access_token: accessToken,
@@ -127,7 +127,8 @@ export default async function handler(req, res) {
               })
 
               const creationId = containerRes.data.id
-              console.log('[IG] Container created:', creationId)
+
+              // console.log('[IG] Container created:', creationId)
 
               const publishRes = await axios.post(`https://graph.facebook.com/v19.0/${igUserId}/media_publish`, null, {
                 params: {
@@ -137,12 +138,13 @@ export default async function handler(req, res) {
               })
 
               instagramPublishedId = publishRes.data.id
-              console.log('[IG] Published:', instagramPublishedId)
+
+              // console.log('[IG] Published:', instagramPublishedId)
             }
           }
         }
       } catch (error) {
-        console.error('[IG] Error:', error.response?.data || error.message)
+        // console.error('[IG] Error:', error.response?.data || error.message)
       }
     }
 
@@ -155,7 +157,7 @@ export default async function handler(req, res) {
         const pageId = process.env.FACEBOOK_ACCOUNT_ID
 
         if (!accessToken || !pageId) {
-          console.error('[FB] Missing credentials')
+          // console.error('[FB] Missing credentials')
         } else if (mediaFiles.length) {
           const mediaFile = mediaFiles[0]
           const mediaType = getMediaType(mediaFile)
@@ -180,7 +182,8 @@ export default async function handler(req, res) {
           })
 
           facebookPublishedId = fbRes.data.post_id || fbRes.data.id
-          console.log('[FB] Published:', facebookPublishedId)
+
+          // console.log('[FB] Published:', facebookPublishedId)
         } else {
           const fbRes = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/feed`, null, {
             params: {
@@ -191,7 +194,7 @@ export default async function handler(req, res) {
           facebookPublishedId = fbRes.data.id
         }
       } catch (error) {
-        console.error('[FB] Error:', error.response?.data || error.message)
+        // console.error('[FB] Error:', error.response?.data || error.message)
       }
     }
 

@@ -1,9 +1,8 @@
 import { Box, Tab, Tabs } from '@mui/material'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
-import Dashboard from './dashboard'
-import CreatePost from './create-post'
 import AITemplates from './ai-templates'
+import Dashboard from './dashboard'
 import PostManagement from './post-management'
 import Settings from './settings'
 
@@ -19,20 +18,21 @@ function TabPanel(props) {
 
 const OnePageTabs = () => {
   const router = useRouter()
-  const [value, setValue] = useState(4)
+  const [value, setValue] = useState(0)
 
   const tabMap = useMemo(
     () => ({
       dashboard: 0,
-      'create-post': 1,
+      'post-management': 1,
       'ai-templates': 2,
-      'post-management': 3,
-      settings: 4
+      settings: 3
     }),
     []
   )
 
   const handleChange = (event, newValue) => {
+    if (value === newValue) return
+
     setValue(newValue)
 
     // update URL without navigating away
@@ -60,9 +60,8 @@ const OnePageTabs = () => {
         }}
       >
         <Tab label='Dashboard' />
-        <Tab label='Create Post' />
-        <Tab label='AI Templates' />
         <Tab label='Post Management' />
+        <Tab label='AI Templates' />
         <Tab label='Settings' />
       </Tabs>
 
@@ -71,7 +70,7 @@ const OnePageTabs = () => {
       </TabPanel>
 
       <TabPanel value={value} index={1}>
-        <CreatePost />
+        <PostManagement />
       </TabPanel>
 
       <TabPanel value={value} index={2}>
@@ -79,10 +78,6 @@ const OnePageTabs = () => {
       </TabPanel>
 
       <TabPanel value={value} index={3}>
-        <PostManagement />
-      </TabPanel>
-
-      <TabPanel value={value} index={4}>
         <Settings />
       </TabPanel>
     </Box>

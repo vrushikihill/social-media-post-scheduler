@@ -29,7 +29,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { socialAccountsAPI } from 'src/services/socialMediaService'
+import { useDispatch } from 'react-redux'
+import { uploadFiles } from 'src/store/common'
+import { socialAccountsAPI, postsAPI } from 'src/services/socialMediaService'
 import DeleteDialog from './DeleteDialog'
 import EditDialog from './EditDialog'
 import Filter from './Filter'
@@ -38,6 +40,7 @@ import CreatePostDialog from './create- dialog/createPostDialog'
 import api from 'utils/api'
 
 const PostManagement = () => {
+  const dispatch = useDispatch()
   const [posts, setPosts] = useState([])
   const [filteredPosts, setFilteredPosts] = useState([])
   const [selectedPost, setSelectedPost] = useState(null)
@@ -53,7 +56,7 @@ const PostManagement = () => {
   const [connectedAccounts, setConnectedAccounts] = useState([])
   const [open, setOpen] = useState(false)
 
-  console.log(posts, 'posts')
+  // console.log(posts, 'posts')
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -101,7 +104,8 @@ const PostManagement = () => {
   const fetchConnectedAccounts = async () => {
     try {
       const response = await socialAccountsAPI.getAccounts()
-      setConnectedAccounts(response.data.filter(account => account.status === 'active'))
+      const accounts = response.data?.data || response.data || []
+      setConnectedAccounts(Array.isArray(accounts) ? accounts.filter(account => account.status === 'active') : [])
     } catch (error) {
       toast.error('Error fetching accounts')
     }
@@ -132,12 +136,16 @@ const PostManagement = () => {
         ...(statusFilter && { status: statusFilter })
       }
 
-      const response = await api.get('v1/social-media-post/all', { params })
+      const response = await api.get('/v1/social-media-post/all', { params })
 
-      if (response.data.data.success) {
-        setPosts(response.data.data.data.posts)
-        setPagination(response.data.data.data.pagination)
-        setCounts(response.data.data.data.counts)
+      // Handle nested data from response middleware
+      const result = response.data?.data || response.data
+      const finalData = result?.data || result
+
+      if (result?.success || response.data?.success || finalData?.posts) {
+        setPosts(finalData.posts || [])
+        if (finalData.pagination) setPagination(finalData.pagination)
+        if (finalData.counts) setCounts(finalData.counts)
       }
     } catch (error) {
       toast.error('Error fetching posts')
@@ -154,20 +162,30 @@ const PostManagement = () => {
     setSelectedPost(post)
 
     // Map platform data properly - using the new API structure
-    const platformIds =
-      post.platforms
-        ?.map(p => {
-          // New API structure has id and provider
-          return p.id
-        })
-        .filter(Boolean) || []
+    // Map platforms/accounts IDs robustly
+    const platformIds = (post.platforms || post.accounts)?.map(p => p.id || p.socialAccountId).filter(Boolean) || []
+
+    // Map status from backend (uppercase) to frontend (lowercase)
+    const statusMap = {
+      PENDING: 'scheduled',
+      PUBLISHED: 'published',
+      FAILED: 'failed',
+      CANCELLED: 'draft',
+      PROCESSING: 'scheduled',
+      PARTIAL: 'published'
+    }
 
     const formData = {
       content: post.content || '',
-      scheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null,
+      scheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : new Date(),
       platforms: platformIds,
-      mediaFiles: post.media || [],
-      status: post.status || 'CANCELLED'
+      postType: post.postType || 'POST',
+      mediaFiles:
+        post.media?.map(m => ({
+          ...m,
+          fileType: m.type?.toLowerCase() || 'image'
+        })) || [],
+      status: statusMap[post.status] || 'draft'
     }
 
     setEditFormData(formData)
@@ -183,7 +201,7 @@ const PostManagement = () => {
 
   const handleDuplicatePost = async post => {
     try {
-      await api.post(`/posts/${post.id}/duplicate`)
+      await postsAPI.duplicatePost(post.id)
       toast.success('Post duplicated successfully')
       fetchPosts()
     } catch (error) {
@@ -194,7 +212,7 @@ const PostManagement = () => {
 
   const handlePublishNow = async post => {
     try {
-      await api.post(`/posts/${post.id}/publish`)
+      await postsAPI.publishNow(post.id)
       toast.success('Post published successfully')
       fetchPosts()
     } catch (error) {
@@ -205,7 +223,7 @@ const PostManagement = () => {
 
   const handleRetryPost = async post => {
     try {
-      await api.post(`/posts/${post.id}/schedule`, { scheduledAt: new Date() })
+      await postsAPI.publishNow(post.id)
       toast.success('Post retry initiated')
       fetchPosts()
     } catch (error) {
@@ -284,19 +302,86 @@ const PostManagement = () => {
   }
 
   const handleSaveEdit = async () => {
+    if (!editFormData.platforms || editFormData.platforms.length === 0) {
+      toast.error('Please select at least one platform')
+
+      return
+    }
+
     try {
-      await api.put(`/posts/${selectedPost.id}`, editFormData)
+      setLoading(true)
+
+      // Identify new files that need uploading (those with a 'file' property)
+      const newFiles = editFormData.mediaFiles.filter(f => f.file).map(f => f.file)
+
+      let uploadedMediaUrls = []
+      if (newFiles.length > 0) {
+        const uploadRes = await dispatch(uploadFiles(newFiles)).unwrap()
+
+        // console.log('Upload response:', uploadRes)
+
+        if (uploadRes && uploadRes.data && (uploadRes.data.files || uploadRes.data.file)) {
+          uploadedMediaUrls = Array.isArray(uploadRes.data.files) ? uploadRes.data.files : [uploadRes.data.file]
+        } else if (uploadRes && (uploadRes.files || uploadRes.file)) {
+          uploadedMediaUrls = Array.isArray(uploadRes.files) ? uploadRes.files : [uploadRes.file]
+        }
+      }
+
+      // Merge existing files with newly uploaded ones
+      const finalMediaFiles = [
+        ...editFormData.mediaFiles
+          .filter(f => !f.file) // Keep existing files
+          .map(file => ({
+            url: file.url,
+            fileUrl: file.fileUrl,
+            type: file.fileType?.toUpperCase() === 'VIDEO' || file.type?.toUpperCase() === 'VIDEO' ? 'VIDEO' : 'IMAGE',
+            size: file.size,
+            mimeType: file.mimeType,
+            order: file.order
+          })),
+        ...uploadedMediaUrls.map((file, index) => ({
+          url: file.url,
+          fileUrl: file.url, // Assuming backend returns url in both
+          type: file.type?.toUpperCase().includes('VIDEO') ? 'VIDEO' : 'IMAGE',
+          size: file.size,
+          mimeType: file.type,
+          order: editFormData.mediaFiles.filter(f => !f.file).length + index
+        }))
+      ]
+
+      // Map status from frontend (lowercase) to backend (uppercase)
+      const statusMapBack = {
+        scheduled: 'PENDING',
+        published: 'PUBLISHED',
+        failed: 'FAILED',
+        draft: 'CANCELLED'
+      }
+
+      const payload = {
+        content: editFormData.content,
+        selectedAccountIds: editFormData.platforms,
+        postType: editFormData.postType || 'POST',
+        mediaFiles: finalMediaFiles,
+        scheduledAt: editFormData.scheduledAt,
+        status: statusMapBack[editFormData.status] || 'CANCELLED',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+
+      await api.put(`/v1/social-media-post/${selectedPost.id}`, payload)
       toast.success('Post updated successfully')
       setEditDialogOpen(false)
       fetchPosts()
     } catch (error) {
+      // console.error('Error saving post:', error)
       toast.error('Failed to update post')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleConfirmDelete = async () => {
     try {
-      await api.delete(`/posts/${selectedPost.id}`)
+      await api.delete(`/v1/social-media-post/scheduled/${selectedPost.id}`)
       toast.success('Post deleted successfully')
       setDeleteDialogOpen(false)
       fetchPosts()
@@ -546,6 +631,7 @@ const PostManagement = () => {
           selectedPost={selectedPost}
           handleConfirmDelete={handleConfirmDelete}
         />
+
         <CreatePostDialog open={open} onClose={() => setOpen(false)} />
       </Box>
     </LocalizationProvider>

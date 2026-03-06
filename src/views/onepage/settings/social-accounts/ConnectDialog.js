@@ -19,7 +19,7 @@ import {
 import React, { useEffect, useState } from 'react'
 import api from 'utils/api'
 
-const ConnectDialog = ({ open, onClose, availablePlatforms }) => {
+const ConnectDialog = ({ open, onClose, availablePlatforms, onSuccess }) => {
   const [connecting, setConnecting] = useState(null)
   const [error, setError] = useState(null)
   const [connected, setConnected] = useState([])
@@ -28,7 +28,7 @@ const ConnectDialog = ({ open, onClose, availablePlatforms }) => {
     const res = await api.get('/v1/auth-social-media/connected')
 
     const { data } = res.data
-    setConnected(data.map(x => x.provider))
+    setConnected(data.map(x => x.platform))
   }
 
   useEffect(() => {
@@ -103,11 +103,18 @@ const ConnectDialog = ({ open, onClose, availablePlatforms }) => {
 
   useEffect(() => {
     const handler = event => {
-      if (event.origin !== window.location.origin) return
+      // Allow messages from our own origin or the backend origin
+      const backendOrigin = new URL(process.env.BACKEND_API_URL || 'http://localhost:8000').origin
+      if (event.origin !== window.location.origin && event.origin !== backendOrigin) return
 
       if (event.data?.type === 'OAUTH_SUCCESS') {
         setConnecting(null)
-        setConnected(prev => [...new Set([...prev, event.data.provider])])
+        const provider = event.data.provider
+        if (provider) {
+          setConnected(prev => [...new Set([...prev, provider])])
+        }
+        onSuccess?.()
+        onClose() // Auto close on success
       }
 
       if (event.data?.type === 'OAUTH_ERROR') {
@@ -119,6 +126,7 @@ const ConnectDialog = ({ open, onClose, availablePlatforms }) => {
     window.addEventListener('message', handler)
 
     return () => window.removeEventListener('message', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

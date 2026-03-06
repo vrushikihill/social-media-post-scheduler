@@ -15,6 +15,7 @@ import {
   ListItemAvatar,
   ListItemText,
   Paper,
+  Skeleton,
   Typography
 } from '@mui/material'
 import { format } from 'date-fns'
@@ -23,10 +24,13 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { postsAPI } from 'src/services/socialMediaService'
 
-const RecentPosts = () => {
+const RecentPosts = ({ loading: externalLoading }) => {
   const router = useRouter()
   const [recentPosts, setRecentPosts] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Use external loading if provided, otherwise use internal
+  const isLoading = externalLoading !== undefined ? externalLoading : loading
 
   useEffect(() => {
     fetchRecentPosts()
@@ -36,35 +40,13 @@ const RecentPosts = () => {
     try {
       setLoading(true)
       const response = await postsAPI.getPublishedPosts()
-      setRecentPosts(response.data.slice(0, 5)) // Show only last 5 posts
+      const data = response.data?.data || response.data
+      const posts = Array.isArray(data) ? data : []
+      setRecentPosts(posts.slice(0, 5))
     } catch (error) {
-      toast.error('Error fetching recent posts:', error)
-      setRecentPosts([
-        {
-          id: 1,
-          content: 'Just launched our new feature! Check it out and let us know what you think.',
-          publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-          platforms: ['facebook', 'instagram'],
-          status: 'published',
-          engagement: { likes: 45, comments: 12, shares: 8 }
-        },
-        {
-          id: 2,
-          content: 'Monday motivation: The only way to do great work is to love what you do.',
-          publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
-          platforms: ['linkedin'],
-          status: 'published',
-          engagement: { likes: 23, comments: 5, shares: 3 }
-        },
-        {
-          id: 3,
-          content: 'Weekend vibes! What are your plans for this beautiful Saturday?',
-          publishedAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
-          platforms: ['instagram', 'twitter'],
-          status: 'failed',
-          error: 'Authentication expired'
-        }
-      ])
+      // console.error('Error fetching recent posts:', error)
+      toast.error('Error fetching recent posts')
+      setRecentPosts([])
     } finally {
       setLoading(false)
     }
@@ -74,6 +56,7 @@ const RecentPosts = () => {
     const icons = {
       facebook: <FacebookIcon sx={{ fontSize: 16 }} />,
       instagram: <InstagramIcon sx={{ fontSize: 16 }} />,
+      'instagram-business': <InstagramIcon sx={{ fontSize: 16 }} />,
       linkedin: <LinkedInIcon sx={{ fontSize: 16 }} />,
       twitter: <TwitterIcon sx={{ fontSize: 16 }} />
     }
@@ -85,6 +68,7 @@ const RecentPosts = () => {
     const colors = {
       facebook: '#1877f2',
       instagram: '#e4405f',
+      'instagram-business': '#e4405f',
       linkedin: '#0077b5',
       twitter: '#1da1f2'
     }
@@ -93,18 +77,22 @@ const RecentPosts = () => {
   }
 
   const getStatusIcon = status => {
-    return status === 'published' ? (
-      <CheckCircleIcon sx={{ color: 'success.main' }} />
-    ) : (
-      <ErrorIcon sx={{ color: 'error.main' }} />
-    )
+    const s = status?.toLowerCase()
+    if (s === 'published') return <CheckCircleIcon sx={{ color: 'success.main' }} />
+    if (s === 'partial') return <CheckCircleIcon sx={{ color: 'warning.main' }} />
+
+    return <ErrorIcon sx={{ color: 'error.main' }} />
   }
 
   const getStatusColor = status => {
-    return status === 'published' ? 'success' : 'error'
+    const s = status?.toLowerCase()
+    if (s === 'published') return 'success'
+    if (s === 'partial') return 'warning'
+
+    return 'error'
   }
 
-  const truncateText = (text, maxLength = 60) => {
+  const truncateText = (text, maxLength = 50) => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
   }
 
@@ -131,74 +119,101 @@ const RecentPosts = () => {
         <Divider />
 
         <List sx={{ p: 0 }}>
-          {recentPosts.map((post, index) => (
-            <Box key={post.id}>
-              <ListItem sx={{ px: 0, py: 2 }}>
-                <ListItemAvatar>
-                  <Avatar
-                    sx={{
-                      bgcolor: post.status === 'published' ? 'success.light' : 'error.light',
-                      '& svg': {
-                        color: 'common.white'
-                      }
-                    }}
-                  >
-                    {getStatusIcon(post.status)}
-                  </Avatar>
-                </ListItemAvatar>
-
-                <ListItemText
-                  primary={
-                    <Box>
-                      <Typography variant='body2' sx={{ mb: 1 }}>
-                        {truncateText(post.content)}
-                      </Typography>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        {post.platforms.map(platform => (
-                          <Avatar
-                            key={platform}
-                            sx={{
-                              width: 22,
-                              height: 22,
-                              bgcolor: getPlatformColor(platform),
-                              color: 'common.white'
-                            }}
-                          >
-                            {getPlatformIcon(platform)}
-                          </Avatar>
-                        ))}
-                      </Box>
-
-                      <Typography variant='caption' color='text.secondary'>
-                        {format(new Date(post.publishedAt), 'MMM dd, yyyy - HH:mm')}
-                      </Typography>
-
-                      {post.engagement && (
-                        <Typography variant='caption' color='text.secondary' sx={{ ml: 2 }}>
-                          👍 {post.engagement.likes} 💬 {post.engagement.comments} 🔄 {post.engagement.shares}
-                        </Typography>
-                      )}
-
-                      {post.error && (
-                        <Typography variant='caption' color='error.main' display='block'>
-                          Error: {post.error}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                />
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <Chip label={post.status} size='small' color={getStatusColor(post.status)} variant='outlined' />
+          {isLoading
+            ? [1, 2, 3, 4, 5].map(i => (
+                <Box key={i}>
+                  <ListItem sx={{ px: 0, py: 2 }}>
+                    <ListItemAvatar>
+                      <Skeleton variant='circular' width={40} height={40} />
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={<Skeleton variant='text' width='80%' />}
+                      secondary={<Skeleton variant='text' width='40%' />}
+                    />
+                  </ListItem>
+                  <Divider />
                 </Box>
-              </ListItem>
+              ))
+            : recentPosts.map((post, index) => (
+                <Box key={post.id}>
+                  <ListItem sx={{ px: 0, py: 2 }}>
+                    <ListItemAvatar>
+                      <Avatar
+                        sx={{
+                          bgcolor:
+                            post.status?.toLowerCase() === 'published'
+                              ? 'success.light'
+                              : post.status?.toLowerCase() === 'partial'
+                              ? 'warning.light'
+                              : 'error.light',
+                          '& svg': {
+                            color: 'common.white'
+                          }
+                        }}
+                      >
+                        {getStatusIcon(post.status)}
+                      </Avatar>
+                    </ListItemAvatar>
 
-              {index < recentPosts.length - 1 && <Divider />}
-            </Box>
-          ))}
+                    <ListItemText
+                      primary={
+                        <Box>
+                          <Typography variant='body2' sx={{ mb: 1 }}>
+                            {truncateText(post.content)}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            {(Array.isArray(post.platforms)
+                              ? post.platforms
+                              : typeof post.platforms === 'string'
+                              ? JSON.parse(post.platforms)
+                              : []
+                            ).map(platform => (
+                              <Avatar
+                                key={platform}
+                                sx={{
+                                  width: 24,
+                                  height: 24,
+                                  bgcolor: getPlatformColor(platform),
+                                  color: 'common.white'
+                                }}
+                              >
+                                {getPlatformIcon(platform)}
+                              </Avatar>
+                            ))}
+                          </Box>
+
+                          <Typography variant='caption' color='text.secondary'>
+                            {post.publishedAt
+                              ? format(new Date(post.publishedAt), 'MMM dd, yyyy - HH:mm')
+                              : 'Recently published'}
+                          </Typography>
+
+                          {post.engagement && (
+                            <Typography variant='caption' color='text.secondary' sx={{ ml: 2 }}>
+                              👍 {post.engagement.likes} 💬 {post.engagement.comments} 🔄 {post.engagement.shares}
+                            </Typography>
+                          )}
+
+                          {post.error && (
+                            <Typography variant='caption' color='error.main' display='block'>
+                              Error: {post.error}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Chip label={post.status} size='small' color={getStatusColor(post.status)} variant='outlined' />
+                    </Box>
+                  </ListItem>
+
+                  {index < recentPosts.length - 1 && <Divider />}
+                </Box>
+              ))}
         </List>
 
-        {recentPosts.length === 0 && !loading && (
+        {!isLoading && recentPosts.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography variant='body2' color='text.secondary'>
               No recent posts found

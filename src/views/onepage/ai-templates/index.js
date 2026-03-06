@@ -1,4 +1,5 @@
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import AddIcon from '@mui/icons-material/Add'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import CelebrationIcon from '@mui/icons-material/Celebration'
 import CompareIcon from '@mui/icons-material/Compare'
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
@@ -8,30 +9,65 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import { Box, Button, TextField, Typography } from '@mui/material'
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
+import DatePicker from 'react-datepicker'
 import toast from 'react-hot-toast'
+import DatePickerWrapper from 'src/@core/styles/libs/react-datepicker'
 import { aiTemplatesAPI } from 'src/services/socialMediaService'
+import TemplateSelectionDialog from '../post-management/create- dialog/TemplateSelectionDialog'
+import CreateTemplateDialog from './CreateTemplateDialog'
 import GenerateDialog from './GenerateDialog'
 import Template from './Template'
+
+const CUSTOM_TEMPLATES_KEY = 'social_media_custom_ai_templates'
+
+const CustomDateInput = forwardRef((props, ref) => {
+  return (
+    <TextField
+      {...props}
+      fullWidth
+      inputRef={ref}
+      InputProps={{
+        endAdornment: <CalendarMonthIcon sx={{ color: 'text.secondary', cursor: 'pointer' }} />
+      }}
+    />
+  )
+})
 
 const AITemplates = () => {
   const router = useRouter()
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [templateSelectionOpen, setTemplateSelectionOpen] = useState(false)
   const [formData, setFormData] = useState({})
   const [generatedContent, setGeneratedContent] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     fetchTemplates()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const getCustomTemplates = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(CUSTOM_TEMPLATES_KEY)
+
+      return saved ? JSON.parse(saved) : []
+    }
+
+    return []
+  }
+
   const fetchTemplates = async () => {
+    let baseTemplates = []
+
     try {
       const response = await aiTemplatesAPI.getTemplates()
-      setTemplates(response.data)
+      baseTemplates = response.data?.data || response.data || []
     } catch (error) {
-      toast.error('Error fetching templates:', error)
+      // console.error('Error fetching templates:', error)
 
       setTemplates([
         {
@@ -120,6 +156,23 @@ const AITemplates = () => {
         }
       ])
     }
+
+    // Merge with custom templates
+    const customTemplates = getCustomTemplates()
+    setTemplates([...customTemplates, ...baseTemplates])
+  }
+
+  const handleSaveCustomTemplate = newTemplate => {
+    const customTemplates = getCustomTemplates()
+    const updatedTemplates = [newTemplate, ...customTemplates]
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updatedTemplates))
+    }
+
+    // Re-fetch to merge
+    fetchTemplates()
+    toast.success('Custom template saved successfully!')
   }
 
   const getCategoryIcon = category => {
@@ -173,7 +226,7 @@ const AITemplates = () => {
         template: content
       })
 
-      setGeneratedContent(response.data.content)
+      setGeneratedContent(response.data?.data?.content || response.data?.content)
       toast.success('Content generated successfully!')
     } catch (error) {
       toast.error('Error generating content:', error)
@@ -233,17 +286,24 @@ const AITemplates = () => {
 
       case 'date':
         return (
-          <TextField
-            key={name}
-            fullWidth
-            type='date'
-            label={name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            InputLabelProps={{ shrink: true }}
-            sx={{ mb: 2 }}
-          />
+          <DatePickerWrapper key={name} sx={{ mb: 2 }}>
+            <DatePicker
+              selected={formData[name] ? new Date(formData[name]) : null}
+              onChange={date => {
+                // Add 12 hours to avoid timezone shifting to previous day
+                const safeDate = date
+                  ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+                  : ''
+                setFormData(prev => ({ ...prev, [name]: safeDate }))
+              }}
+              customInput={
+                <CustomDateInput
+                  label={name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  required={required}
+                />
+              }
+            />
+          </DatePickerWrapper>
         )
 
       default:
@@ -273,13 +333,11 @@ const AITemplates = () => {
             Use pre-built templates to create engaging content quickly
           </Typography>
         </Box>
-        <Button
-          variant='outlined'
-          startIcon={<AutoAwesomeIcon />}
-          onClick={() => router.push('/one-page-tabs?tab=create-post')}
-        >
-          Custom AI Generate
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button variant='contained' startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+            Create Template
+          </Button>
+        </Box>
       </Box>
 
       {/* Templates Grid */}
@@ -300,6 +358,27 @@ const AITemplates = () => {
         selectedTemplate={selectedTemplate}
         generatedContent={generatedContent}
         setGeneratedContent={setGeneratedContent}
+        loading={loading}
+      />
+
+      {/* Create Template Dialog */}
+      <CreateTemplateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSave={handleSaveCustomTemplate}
+      />
+
+      {/* Template Selection Dialog */}
+      <TemplateSelectionDialog
+        open={templateSelectionOpen}
+        onClose={() => setTemplateSelectionOpen(false)}
+        onSelectContent={content => {
+          // You can handle what to do with the generated content here
+          // For now, it copies to clipboard or routes to create-post
+          navigator.clipboard.writeText(content)
+          toast.success('Content copied to clipboard!')
+          router.push({ pathname: '/one-page-tabs', query: { tab: 'create-post' } })
+        }}
       />
     </Box>
   )

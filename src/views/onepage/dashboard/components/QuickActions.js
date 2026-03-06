@@ -14,28 +14,28 @@ const QuickActions = () => {
       description: 'Write and schedule a new post',
       icon: <AddIcon />,
       color: '#4299e1',
-      path: '/create-post'
+      path: '/one-page-tabs?tab=create-post'
     },
     {
       title: 'Use AI Template',
       description: 'Generate content with AI',
       icon: <SmartToyIcon />,
       color: '#805ad5',
-      path: '/ai-templates'
+      path: '/one-page-tabs?tab=ai-templates'
     },
     {
-      title: 'View Calendar',
+      title: 'Post Management',
       description: 'See scheduled posts',
       icon: <CalendarTodayIcon />,
       color: '#38b2ac',
-      path: '/calendar'
+      path: '/one-page-tabs?tab=post-management'
     },
     {
       title: 'Connect Account',
       description: 'Add social media account',
       icon: <LinkIcon />,
       color: '#48bb78',
-      path: '/social-accounts'
+      path: '/one-page-tabs?tab=settings'
     }
   ]
 

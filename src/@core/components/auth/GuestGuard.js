@@ -7,7 +7,7 @@ const GuestGuard = props => {
 
   const auth = useAuth()
 
-  let storedToken = localStorage.getItem(authConfig.storageTokenKeyName)
+  let storedToken = typeof window !== 'undefined' ? localStorage.getItem(authConfig.storageTokenKeyName) : null
 
   if (auth.loading || (storedToken && !auth.user)) {
     return fallback

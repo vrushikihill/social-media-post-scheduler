@@ -41,22 +41,24 @@ const EditDialog = ({
     const icons = {
       facebook: <FacebookIcon sx={{ fontSize: 16 }} />,
       instagram: <InstagramIcon sx={{ fontSize: 16 }} />,
+      'instagram-business': <InstagramIcon sx={{ fontSize: 16 }} />,
       linkedin: <LinkedInIcon sx={{ fontSize: 16 }} />,
       twitter: <TwitterIcon sx={{ fontSize: 16 }} />
     }
 
-    return icons[platform] || <FacebookIcon sx={{ fontSize: 16 }} />
+    return icons[platform?.toLowerCase()] || <FacebookIcon sx={{ fontSize: 16 }} />
   }
 
   const getPlatformColor = platform => {
     const colors = {
       facebook: '#1877f2',
       instagram: '#e4405f',
+      'instagram-business': '#e4405f',
       linkedin: '#0077b5',
       twitter: '#1da1f2'
     }
 
-    return colors[platform] || '#1877f2'
+    return colors[platform?.toLowerCase()] || '#1877f2'
   }
 
   return (
@@ -109,27 +111,27 @@ const EditDialog = ({
                       transition: 'all 0.2s',
                       '&:hover': {
                         borderColor: 'primary.main',
-                        boxShadow: `0 2px 8px ${getPlatformColor(account.platform)}15`
+                        boxShadow: `0 2px 8px ${getPlatformColor(account.provider || account.platform)}15`
                       }
                     }}
                   >
                     <Avatar
                       sx={{
-                        bgcolor: getPlatformColor(account.platform),
+                        bgcolor: getPlatformColor(account.provider || account.platform),
                         color: 'common.white',
                         width: 25,
                         height: 25,
                         fontSize: 20
                       }}
                     >
-                      {getPlatformIcon(account.platform)}
+                      {getPlatformIcon(account.provider || account.platform)}
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant='body2' fontWeight={500}>
                         {account.accountName}
                       </Typography>
                       <Typography variant='caption' color='text.secondary' sx={{ textTransform: 'capitalize' }}>
-                        {account.platform}
+                        {account.provider || account.platform}
                       </Typography>
                     </Box>
                     <Checkbox
@@ -143,8 +145,25 @@ const EditDialog = ({
             </Grid>
           </Box>
 
-          {/* Status and Schedule */}
+          {/* Status and Type */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={6}>
+              <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                Post Type
+              </Typography>
+              <FormControl fullWidth>
+                <Select
+                  value={editFormData.postType}
+                  onChange={e => setEditFormData(prev => ({ ...prev, postType: e.target.value }))}
+                  size='small'
+                >
+                  <MenuItem value='POST'>Post</MenuItem>
+                  <MenuItem value='REEL'>Reels</MenuItem>
+                  <MenuItem value='STORY'>Story</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
             <Grid item xs={6}>
               <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
                 Post Status
@@ -161,25 +180,26 @@ const EditDialog = ({
                 </Select>
               </FormControl>
             </Grid>
-
-            {editFormData.status === 'scheduled' && (
-              <Grid item xs={6}>
-                <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
-                  Schedule Date & Time
-                </Typography>
-                <DateTimePicker
-                  value={editFormData.scheduledAt}
-                  onChange={newValue => setEditFormData(prev => ({ ...prev, scheduledAt: newValue }))}
-                  minDateTime={new Date()}
-                  slotProps={{
-                    textField: {
-                      size: 'small'
-                    }
-                  }}
-                />
-              </Grid>
-            )}
           </Grid>
+
+          {editFormData.status === 'scheduled' && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                Schedule Date & Time
+              </Typography>
+              <DateTimePicker
+                value={editFormData.scheduledAt}
+                onChange={newValue => setEditFormData(prev => ({ ...prev, scheduledAt: newValue }))}
+                minDateTime={new Date()}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: 'small'
+                  }
+                }}
+              />
+            </Box>
+          )}
 
           <Box>
             {/* Debug Info */}
@@ -208,7 +228,9 @@ const EditDialog = ({
                             aspectRatio: '1'
                           }}
                         >
-                          {file.fileType === 'image' ? (
+                          {file.fileType?.toLowerCase() === 'image' ||
+                          file.type?.toLowerCase() === 'image' ||
+                          !file.type?.toLowerCase().includes('video') ? (
                             <img
                               src={imageUrl}
                               alt={file.fileName || 'Media'}
@@ -283,7 +305,6 @@ const EditDialog = ({
               startIcon={<CloudUploadIcon />}
               disabled={uploadingMedia}
               sx={{ mb: 1 }}
-              onClick={() => toast.error('Upload failed. Please try again.')}
             >
               {uploadingMedia
                 ? 'Uploading...'

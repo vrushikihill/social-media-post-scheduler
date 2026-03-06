@@ -18,11 +18,8 @@ import {
 } from '@mui/material'
 import React from 'react'
 import InfoIcon from '@mui/icons-material/Info'
-import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import PostAddIcon from '@mui/icons-material/PostAdd'
 import SyncIcon from '@mui/icons-material/Sync'
 import TokenIcon from '@mui/icons-material/Token'
-import { format, formatDistanceToNow } from 'date-fns'
 
 const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPlatformIcon }) => {
   if (!account) return null
@@ -46,7 +43,7 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
     },
     {
       label: 'Account ID',
-      value: account.pageId || account.businessId || account.platformUserId || 'N/A',
+      value: account.providerAccountId || 'N/A',
       icon: <TokenIcon />
     },
     {
@@ -54,28 +51,8 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
       value: account.status,
       icon: <SyncIcon />,
       chip: true
-    },
-    {
-      label: 'Scheduled Posts',
-      value: account.postsCount,
-      icon: <PostAddIcon />
-    },
-    {
-      label: 'Last Sync',
-      value: formatDistanceToNow(new Date(account.lastSync), { addSuffix: true }),
-      icon: <AccessTimeIcon />,
-      subtitle: format(new Date(account.lastSync), 'PPpp')
     }
   ]
-
-  if (account.tokenExpiry) {
-    accountDetails.push({
-      label: 'Token Expires',
-      value: format(new Date(account.tokenExpiry), 'PPP'),
-      icon: <TokenIcon />,
-      subtitle: formatDistanceToNow(new Date(account.tokenExpiry), { addSuffix: true })
-    })
-  }
 
   return (
     <Dialog
@@ -112,8 +89,8 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
       </DialogTitle>
 
       <DialogContent>
-        <Paper sx={{ p: 3, mb: 3, bgcolor: 'grey.50' }}>
-          <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 2 }}>
+        <Paper sx={{ p: 3, mb: 3, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
+          <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 2 }} color='text.primary'>
             Account Information
           </Typography>
 
@@ -136,7 +113,7 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
                             sx={{ textTransform: 'capitalize' }}
                           />
                         ) : (
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
+                          <Typography variant='body2' sx={{ fontWeight: 600 }} color='text.primary'>
                             {detail.value}
                           </Typography>
                         )}
@@ -152,8 +129,8 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
         </Paper>
 
         {/* Platform Specific Information */}
-        <Paper sx={{ p: 3, bgcolor: 'grey.50' }}>
-          <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 2 }}>
+        <Paper sx={{ p: 3, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
+          <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 2 }} color='text.primary'>
             Platform Permissions
           </Typography>
 
@@ -161,27 +138,39 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
             {account.platform === 'facebook' && (
               <>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Manage and publish posts to Facebook pages</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Manage and publish posts to Facebook pages
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Read engagement metrics and insights</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Read engagement metrics and insights
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Access Facebook pages list</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Access Facebook pages list
+                  </Typography>
                 </Grid>
               </>
             )}
 
-            {account.platform === 'instagram' && (
+            {(account.platform === 'instagram' || account.platform === 'instagram-business') && (
               <>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Publish posts to Instagram business account</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Publish posts to Instagram business account
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Access basic profile information</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Access basic profile information
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Read engagement metrics</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Read engagement metrics
+                  </Typography>
                 </Grid>
               </>
             )}
@@ -189,13 +178,19 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
             {account.platform === 'linkedin' && (
               <>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Publish posts to LinkedIn profile and company pages</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Publish posts to LinkedIn profile and company pages
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Access basic profile information</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Access basic profile information
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Read engagement metrics</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Read engagement metrics
+                  </Typography>
                 </Grid>
               </>
             )}
@@ -203,13 +198,19 @@ const AccountDetailsDialog = ({ open, onClose, account, getPlatformColor, getPla
             {account.platform === 'twitter' && (
               <>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Publish tweets on your behalf</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Publish tweets on your behalf
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Read your profile information</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Read your profile information
+                  </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant='body2'>✓ Access engagement metrics</Typography>
+                  <Typography variant='body2' color='text.primary'>
+                    ✓ Access engagement metrics
+                  </Typography>
                 </Grid>
               </>
             )}

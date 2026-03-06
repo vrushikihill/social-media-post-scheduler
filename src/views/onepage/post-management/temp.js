@@ -44,17 +44,19 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 import api from 'utils/api'
 
 const getAccountIcon = platform => {
-  switch (platform) {
+  const normalizedPlatform = platform ? platform.toLowerCase() : ''
+  switch (normalizedPlatform) {
     case 'facebook':
-      return <FacebookIcon sx={{ fontSize: 14 }} />
+      return <FacebookIcon sx={{ fontSize: 14, color: '#1877f2' }} />
     case 'instagram':
-      return <InstagramIcon sx={{ fontSize: 14 }} />
+    case 'instagram-business':
+      return <InstagramIcon sx={{ fontSize: 14, color: '#e4405f' }} />
     case 'linkedin':
-      return <LinkedInIcon sx={{ fontSize: 14 }} />
+      return <LinkedInIcon sx={{ fontSize: 14, color: '#0077b5' }} />
     case 'twitter':
-      return <TwitterIcon sx={{ fontSize: 14 }} />
+      return <TwitterIcon sx={{ fontSize: 14, color: '#1da1f2' }} />
     default:
-      return <InstagramIcon sx={{ fontSize: 14 }} />
+      return <InstagramIcon sx={{ fontSize: 14, color: '#e4405f' }} />
   }
 }
 

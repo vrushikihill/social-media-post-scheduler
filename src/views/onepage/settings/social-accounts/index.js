@@ -4,7 +4,9 @@ import InstagramIcon from '@mui/icons-material/Instagram'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import { Alert, Box, Button, Fade, Grid, Skeleton, Typography } from '@mui/material'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
+import api from 'src/services/api'
+import toast from 'react-hot-toast'
 import AccountConnect from './AccountConnect'
 import AccountDetailsDialog from './AccountDetailsDialog'
 import ConnectDialog from './ConnectDialog'
@@ -73,12 +75,53 @@ export const loginWithFacebook = () => {
 
 const SocialAccounts = () => {
   const [accounts, setAccounts] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [connectDialogOpen, setConnectDialogOpen] = useState(false)
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [error, setError] = useState(null)
+
+  const fetchAccounts = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get('/v1/auth-social-media/connected')
+      setAccounts(response.data?.data || [])
+    } catch (err) {
+      // console.error('Failed to fetch accounts', err)
+      setError('Failed to load connected accounts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAccounts()
+  }, [])
+
+  const handleDisconnectAccount = async () => {
+    if (!selectedAccount) return
+    try {
+      await api.delete(`/v1/auth-social-media/disconnect/${selectedAccount.id}`)
+      toast.success('Account disconnected successfully')
+      setDisconnectDialogOpen(false)
+      fetchAccounts() // Refresh list
+    } catch (err) {
+      // console.error('Failed to disconnect account', err)
+      toast.error('Failed to disconnect account')
+    }
+  }
+
+  const handleRefreshToken = async () => {
+    try {
+      // Mock refresh or actual if exists. Since I don't see one, I'll just refetch for now.
+      // Ideally there's an API for this.
+      await fetchAccounts()
+      toast.success('Account state updated')
+    } catch (err) {
+      toast.error('Failed to refresh account')
+    }
+  }
 
   const availablePlatforms = Object.values(PLATFORM_CONFIG)
 
@@ -92,7 +135,7 @@ const SocialAccounts = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
         <Box>
-          <Typography variant='h4' sx={{ fontWeight: 700, mb: 1 }}>
+          <Typography variant='h5' sx={{ fontWeight: 700, mb: 1 }}>
             Social Media Accounts
           </Typography>
           <Typography variant='body1' color='text.secondary'>
@@ -130,6 +173,7 @@ const SocialAccounts = () => {
                   getPlatformColor={getPlatformColor}
                   getPlatformIcon={getPlatformIcon}
                   account={account}
+                  handleRefreshToken={handleRefreshToken}
                   setSelectedAccount={setSelectedAccount}
                   setDisconnectDialogOpen={setDisconnectDialogOpen}
                   onViewDetails={handleViewDetails}
@@ -144,12 +188,14 @@ const SocialAccounts = () => {
         open={connectDialogOpen}
         onClose={() => setConnectDialogOpen(false)}
         availablePlatforms={availablePlatforms}
+        onSuccess={fetchAccounts}
       />
 
       <DisconnectDialog
         disconnectDialogOpen={disconnectDialogOpen}
         setDisconnectDialogOpen={setDisconnectDialogOpen}
         selectedAccount={selectedAccount}
+        handleDisconnectAccount={handleDisconnectAccount}
       />
 
       <AccountDetailsDialog

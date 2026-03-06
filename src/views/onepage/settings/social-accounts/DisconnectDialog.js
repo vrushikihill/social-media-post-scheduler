@@ -29,22 +29,24 @@ const DisconnectDialog = ({
     const icons = {
       facebook: <FacebookIcon />,
       instagram: <InstagramIcon />,
+      'instagram-business': <InstagramIcon />,
       linkedin: <LinkedInIcon />,
       twitter: <TwitterIcon />
     }
-    
-return icons[platform] || <FacebookIcon />
+
+    return icons[platform?.toLowerCase()] || <FacebookIcon />
   }
 
   const getPlatformColor = platform => {
     const colors = {
       facebook: '#1877f2',
       instagram: '#e4405f',
+      'instagram-business': '#e4405f',
       linkedin: '#0077b5',
       twitter: '#1da1f2'
     }
-    
-return colors[platform] || '#1877f2'
+
+    return colors[platform?.toLowerCase()] || '#1877f2'
   }
 
   const handleDisconnect = async () => {
@@ -71,13 +73,27 @@ return colors[platform] || '#1877f2'
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <WarningIcon color='error' />
-          <Typography variant='h6'>Disconnect Account</Typography>
+          <Typography variant='h6' color='text.primary'>
+            Disconnect Account
+          </Typography>
         </Box>
       </DialogTitle>
 
       <DialogContent>
         {/* Account Info */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            mb: 3,
+            p: 2,
+            bgcolor: 'background.default',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2
+          }}
+        >
           <Avatar
             sx={{
               bgcolor: getPlatformColor(selectedAccount.platform),
@@ -89,7 +105,7 @@ return colors[platform] || '#1877f2'
             {getPlatformIcon(selectedAccount.platform)}
           </Avatar>
           <Box>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
+            <Typography variant='h6' sx={{ fontWeight: 600 }} color='text.primary'>
               {selectedAccount.accountName}
             </Typography>
             <Typography variant='body2' color='text.secondary' sx={{ textTransform: 'capitalize' }}>
@@ -98,7 +114,7 @@ return colors[platform] || '#1877f2'
           </Box>
         </Box>
 
-        <Typography variant='body1' sx={{ mb: 2 }}>
+        <Typography variant='body1' sx={{ mb: 2 }} color='text.primary'>
           Are you sure you want to disconnect this account?
         </Typography>
 

@@ -30,12 +30,12 @@ export default function handler(req, res) {
     res.status(200).json(accounts)
   } else if (req.method === 'POST') {
     // Mock account connection
-    const { platform, authCode } = req.body
+    const { platform } = req.body
 
     if (platform !== 'instagram' && platform !== 'facebook') {
       res.status(400).json({ error: 'Only Instagram and Facebook are supported' })
-      
-return
+
+      return
     }
 
     // Simulate OAuth flow

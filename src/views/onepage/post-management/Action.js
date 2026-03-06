@@ -17,8 +17,8 @@ const Action = ({
   menuAnchor
 }) => {
   const router = useRouter()
-  
-return (
+
+  return (
     <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
       <MenuItem onClick={() => router.push(`/one-page-tabs?tab=create-post&edit=${selectedPost?.id}`)}>
         <EditIcon sx={{ mr: 1 }} />

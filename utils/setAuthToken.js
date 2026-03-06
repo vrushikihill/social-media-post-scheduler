@@ -10,10 +10,14 @@ const setAuthToken = token => {
   if (token) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
-    localStorage.setItem(authConfig.storageTokenKeyName, token)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(authConfig.storageTokenKeyName, token)
+    }
   } else {
     delete api.defaults.headers.common['Authorization']
-    localStorage.removeItem(authConfig.storageTokenKeyName)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(authConfig.storageTokenKeyName)
+    }
   }
 }
 

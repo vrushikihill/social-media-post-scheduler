@@ -13,6 +13,7 @@ import {
   ListItemAvatar,
   ListItemText,
   Paper,
+  Skeleton,
   Typography
 } from '@mui/material'
 import { format } from 'date-fns'
@@ -21,10 +22,13 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { postsAPI } from 'src/services/socialMediaService'
 
-const UpcomingPosts = () => {
+const UpcomingPosts = ({ loading: externalLoading }) => {
   const router = useRouter()
   const [upcomingPosts, setUpcomingPosts] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Use external loading if provided, otherwise use internal
+  const isLoading = externalLoading !== undefined ? externalLoading : loading
 
   useEffect(() => {
     fetchUpcomingPosts()
@@ -34,33 +38,13 @@ const UpcomingPosts = () => {
     try {
       setLoading(true)
       const response = await postsAPI.getScheduledPosts()
-      setUpcomingPosts(response.data.slice(0, 5)) // Show only next 5 posts
+      const data = response.data?.data || response.data
+      const posts = Array.isArray(data) ? data : []
+      setUpcomingPosts(posts.slice(0, 5))
     } catch (error) {
-      toast.error('Error fetching upcoming posts:', error)
-
-      setUpcomingPosts([
-        {
-          id: 1,
-          content: 'Exciting product launch coming soon! Stay tuned for updates.',
-          scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-          platforms: ['facebook', 'instagram'],
-          status: 'scheduled'
-        },
-        {
-          id: 2,
-          content: 'Weekly motivation: Success is not final, failure is not fatal...',
-          scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          platforms: ['linkedin', 'twitter'],
-          status: 'scheduled'
-        },
-        {
-          id: 3,
-          content: 'Behind the scenes of our latest project. Check it out!',
-          scheduledAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // Day after tomorrow
-          platforms: ['instagram'],
-          status: 'scheduled'
-        }
-      ])
+      // console.error('Error fetching upcoming posts:', error)
+      toast.error('Error fetching upcoming posts')
+      setUpcomingPosts([])
     } finally {
       setLoading(false)
     }
@@ -70,6 +54,7 @@ const UpcomingPosts = () => {
     const icons = {
       facebook: <FacebookIcon sx={{ fontSize: 16 }} />,
       instagram: <InstagramIcon sx={{ fontSize: 16 }} />,
+      'instagram-business': <InstagramIcon sx={{ fontSize: 16 }} />,
       linkedin: <LinkedInIcon sx={{ fontSize: 16 }} />,
       twitter: <TwitterIcon sx={{ fontSize: 16 }} />
     }
@@ -81,6 +66,7 @@ const UpcomingPosts = () => {
     const colors = {
       facebook: '#1877f2',
       instagram: '#e4405f',
+      'instagram-business': '#e4405f',
       linkedin: '#0077b5',
       twitter: '#1da1f2'
     }
@@ -113,52 +99,74 @@ const UpcomingPosts = () => {
         </Box>
         <Divider />
         <List sx={{ p: 0 }}>
-          {upcomingPosts.map((post, index) => (
-            <Box key={post.id}>
-              <ListItem sx={{ px: 0, py: 2 }}>
-                <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: 'primary.light', color: 'common.white' }}>
-                    <ScheduleIcon />
-                  </Avatar>
-                </ListItemAvatar>
+          {isLoading
+            ? [1, 2, 3, 4, 5].map(i => (
+                <Box key={i}>
+                  <ListItem sx={{ px: 0, py: 2 }}>
+                    <ListItemAvatar>
+                      <Skeleton variant='circular' width={40} height={40} />
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={<Skeleton variant='text' width='80%' />}
+                      secondary={<Skeleton variant='text' width='40%' />}
+                    />
+                  </ListItem>
+                  <Divider />
+                </Box>
+              ))
+            : upcomingPosts.map((post, index) => (
+                <Box key={post.id}>
+                  <ListItem sx={{ px: 0, py: 2 }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: 'primary.light', color: 'common.white' }}>
+                        <ScheduleIcon />
+                      </Avatar>
+                    </ListItemAvatar>
 
-                <ListItemText
-                  primary={
-                    <Box>
-                      <Typography variant='body2' sx={{ mb: 1 }}>
-                        {truncateText(post.content)}
-                      </Typography>
+                    <ListItemText
+                      primary={
+                        <Box>
+                          <Typography variant='body2' sx={{ mb: 1 }}>
+                            {truncateText(post.content)}
+                          </Typography>
 
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        {post.platforms.map(platform => (
-                          <Avatar
-                            key={platform}
-                            sx={{
-                              width: 22,
-                              height: 22,
-                              bgcolor: getPlatformColor(platform),
-                              color: 'common.white'
-                            }}
-                          >
-                            {getPlatformIcon(platform)}
-                          </Avatar>
-                        ))}
-                      </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            {(Array.isArray(post.platforms)
+                              ? post.platforms
+                              : typeof post.platforms === 'string'
+                              ? JSON.parse(post.platforms)
+                              : []
+                            ).map(platform => (
+                              <Avatar
+                                key={platform}
+                                sx={{
+                                  width: 22,
+                                  height: 22,
+                                  bgcolor: getPlatformColor(platform),
+                                  color: 'common.white'
+                                }}
+                              >
+                                {getPlatformIcon(platform)}
+                              </Avatar>
+                            ))}
+                          </Box>
 
-                      <Typography variant='caption' color='text.secondary'>
-                        {format(new Date(post.scheduledAt), 'MMM dd, yyyy - HH:mm')}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </ListItem>
+                          <Typography variant='caption' color='text.secondary'>
+                            {post.scheduledAt
+                              ? format(new Date(post.scheduledAt), 'MMM dd, yyyy - HH:mm')
+                              : 'Scheduled'}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </ListItem>
 
-              {index < upcomingPosts.length - 1 && <Divider />}
-            </Box>
-          ))}
+                  {index < upcomingPosts.length - 1 && <Divider />}
+                </Box>
+              ))}
         </List>
 
-        {upcomingPosts.length === 0 && !loading && (
+        {!isLoading && upcomingPosts.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography variant='body2' color='text.secondary'>
               No upcoming posts scheduled
