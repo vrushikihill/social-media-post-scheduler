@@ -2,7 +2,14 @@ import { Avatar, Box, Button, Chip, Grid, Paper, Typography } from '@mui/materia
 import React from 'react'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 
-const Template = ({ handleUseTemplate, getCategoryColor, getCategoryIcon, templates }) => {
+const Template = ({
+  handleUseTemplate,
+  handleEditTemplate,
+  handleDeleteTemplate,
+  getCategoryColor,
+  getCategoryIcon,
+  templates
+}) => {
   return (
     <Grid container spacing={5}>
       {templates.map(template => (
@@ -88,7 +95,7 @@ const Template = ({ handleUseTemplate, getCategoryColor, getCategoryIcon, templa
               </Box>
 
               {/* Template Preview */}
-              <Box sx={{ my: 4, p: 2, border: '2px solid', borderColor: 'divider', borderRadius: 1 }}>
+              <Box sx={{ mt: 4, mb: 4, p: 2, border: '2px solid', borderColor: 'divider', borderRadius: 1 }}>
                 <Typography variant='caption' color='text.secondary' sx={{ mb: 1, display: 'block' }}>
                   Template Preview:
                 </Typography>
@@ -97,15 +104,33 @@ const Template = ({ handleUseTemplate, getCategoryColor, getCategoryIcon, templa
                 </Typography>
               </Box>
 
-              {/* Use Template Button */}
-              <Button
-                variant='contained'
-                fullWidth
-                startIcon={<SmartToyIcon />}
-                onClick={() => handleUseTemplate(template)}
-              >
-                Use This Template
-              </Button>
+              {/* Actions */}
+              {typeof template.id === 'string' && template.id.startsWith('custom_') && (
+                <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+                  <Button
+                    variant='outlined'
+                    fullWidth
+                    color='info'
+                    onClick={e => {
+                      e.stopPropagation()
+                      handleEditTemplate(template)
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant='outlined'
+                    fullWidth
+                    color='error'
+                    onClick={e => {
+                      e.stopPropagation()
+                      handleDeleteTemplate(template.id)
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              )}
             </Box>
           </Paper>
         </Grid>

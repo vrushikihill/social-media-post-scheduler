@@ -17,7 +17,7 @@ import { PostBox } from './PostBox'
 import { Preview } from './Preview'
 import TemplateSelectionDialog from './TemplateSelectionDialog'
 
-export default function CreatePostDialog({ open, onClose }) {
+export default function CreatePostDialog({ open, onClose, onSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [invalidImages, setInvalidImages] = useState([]) // Track images with invalid aspect ratios
   const [cropDialogOpen, setCropDialogOpen] = useState(false)
@@ -291,7 +291,6 @@ export default function CreatePostDialog({ open, onClose }) {
       }
 
       const response = await aiTemplatesAPI.generateCaption(prompt, platform, tone)
-      const currentContent = getValues('content') || ''
 
       const newContent =
         response.data?.data?.caption ||
@@ -299,13 +298,20 @@ export default function CreatePostDialog({ open, onClose }) {
         response.data?.caption ||
         response.data?.generatedContent ||
         ''
-      setValue('content', currentContent ? `${currentContent}\n\n${newContent}` : newContent)
+      
       toast.success('AI content generated!', { id: toastId })
-      setAiDialogOpen(false)
+      
+      return newContent
     } catch (error) {
-      // console.error('Error generating AI content:', error.response?.data || error.message || error)
       toast.error(error.response?.data?.message || 'Error generating AI content', { id: toastId })
+      return null
     }
+  }
+
+  const handleApplyAIContent = (newContent) => {
+    const currentContent = getValues('content') || ''
+    setValue('content', currentContent ? `${currentContent}\n\n${newContent}` : newContent)
+    setAiDialogOpen(false)
   }
 
   const handleSelectTemplateContent = content => {
@@ -410,7 +416,7 @@ export default function CreatePostDialog({ open, onClose }) {
         // Post immediately
         response = await api.post('/v1/social-media-post/post', payload)
 
-        const result = response.data.data
+        const result = response.data?.data || response.data
 
         // Show results
         if (result.summary.successful > 0) {
@@ -441,9 +447,10 @@ export default function CreatePostDialog({ open, onClose }) {
       if (shouldShowSuccess) {
         setSuccessDialogOpen(true)
       } else {
-        // If no success (only errors), close dialog
+        // If no success show (e.g. all accounts failed for direct post), just reset and refresh
         setTimeout(() => {
           onClose()
+          if (onSuccess) onSuccess()
           reset()
           setLocalMediaFiles([])
         }, 1000)
@@ -457,7 +464,18 @@ export default function CreatePostDialog({ open, onClose }) {
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth={showPreview ? 'lg' : 'md'} fullWidth>
+      <Dialog
+        open={open}
+        onClose={(event, reason) => {
+          if (isSubmitting && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+            return
+          }
+          onClose()
+        }}
+        disableEscapeKeyDown={isSubmitting}
+        maxWidth={showPreview ? 'lg' : 'md'}
+        fullWidth
+      >
         <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '85vh' }}>
           <Header
             showPreview={showPreview}
@@ -465,6 +483,7 @@ export default function CreatePostDialog({ open, onClose }) {
             onClose={onClose}
             onAIAssistantClick={() => setAiDialogOpen(true)}
             onTemplateClick={() => setTemplateDialogOpen(true)}
+            isSubmitting={isSubmitting}
           />
 
           {/* Content - Scrollable */}
@@ -522,7 +541,12 @@ export default function CreatePostDialog({ open, onClose }) {
       />
 
       {/* AI Generate Dialog */}
-      <AiDialog handleAIGenerate={handleAIGenerate} aiDialogOpen={aiDialogOpen} setAiDialogOpen={setAiDialogOpen} />
+      <AiDialog 
+        handleAIGenerate={handleAIGenerate} 
+        aiDialogOpen={aiDialogOpen} 
+        setAiDialogOpen={setAiDialogOpen} 
+        onApplyContent={handleApplyAIContent}
+      />
 
       {/* Success Dialog */}
       <Dialog
@@ -530,6 +554,7 @@ export default function CreatePostDialog({ open, onClose }) {
         onClose={() => {
           setSuccessDialogOpen(false)
           onClose()
+          if (onSuccess) onSuccess()
           reset()
           setLocalMediaFiles([])
         }}
@@ -575,6 +600,7 @@ export default function CreatePostDialog({ open, onClose }) {
             onClick={() => {
               setSuccessDialogOpen(false)
               onClose()
+              if (onSuccess) onSuccess()
               reset()
               setLocalMediaFiles([])
             }}

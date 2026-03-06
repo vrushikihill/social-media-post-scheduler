@@ -17,6 +17,7 @@ import { aiTemplatesAPI } from 'src/services/socialMediaService'
 import TemplateSelectionDialog from '../post-management/create- dialog/TemplateSelectionDialog'
 import CreateTemplateDialog from './CreateTemplateDialog'
 import GenerateDialog from './GenerateDialog'
+import DeleteConfirmationDialog from './DeleteConfirmationDialog'
 import Template from './Template'
 
 const CUSTOM_TEMPLATES_KEY = 'social_media_custom_ai_templates'
@@ -44,6 +45,10 @@ const AITemplates = () => {
   const [formData, setFormData] = useState({})
   const [generatedContent, setGeneratedContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedTone, setSelectedTone] = useState(null)
+  const [editingTemplate, setEditingTemplate] = useState(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [templateToDelete, setTemplateToDelete] = useState(null)
 
   useEffect(() => {
     fetchTemplates()
@@ -164,15 +169,55 @@ const AITemplates = () => {
 
   const handleSaveCustomTemplate = newTemplate => {
     const customTemplates = getCustomTemplates()
-    const updatedTemplates = [newTemplate, ...customTemplates]
+    let updatedTemplates
+
+    // Check if we're editing an existing template
+    const existingIndex = customTemplates.findIndex(t => t.id === newTemplate.id)
+
+    if (existingIndex !== -1) {
+      updatedTemplates = [...customTemplates]
+      updatedTemplates[existingIndex] = newTemplate
+    } else {
+      updatedTemplates = [newTemplate, ...customTemplates]
+    }
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updatedTemplates))
     }
 
-    // Re-fetch to merge
+    // Refresh state to include both custom and base templates
     fetchTemplates()
-    toast.success('Custom template saved successfully!')
+
+    setEditingTemplate(null)
+    setCreateDialogOpen(false)
+    toast.success(existingIndex !== -1 ? 'Template updated successfully!' : 'Custom template saved successfully!')
+  }
+
+  const handleDeleteTemplate = templateId => {
+    const template = templates.find(t => t.id === templateId)
+    setTemplateToDelete(template)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!templateToDelete) return
+
+    const customTemplates = getCustomTemplates()
+    const updatedTemplates = customTemplates.filter(t => t.id !== templateToDelete.id)
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updatedTemplates))
+    }
+
+    fetchTemplates()
+    setDeleteDialogOpen(false)
+    setTemplateToDelete(null)
+    toast.success('Template deleted successfully!')
+  }
+
+  const handleEditTemplate = template => {
+    setEditingTemplate(template)
+    setCreateDialogOpen(true)
   }
 
   const getCategoryIcon = category => {
@@ -204,40 +249,28 @@ const AITemplates = () => {
   const handleUseTemplate = template => {
     setSelectedTemplate(template)
     setFormData({})
-    setGeneratedContent('')
+    setGeneratedContent(template.template)
+    setSelectedTone(null)
     setGenerateDialogOpen(true)
   }
 
-  const handleGenerateContent = async (tone = 'professional') => {
+  const handleGenerateContent = async () => {
     try {
       setLoading(true)
 
-      // Fill template with form data
-      let content = selectedTemplate.template
-      selectedTemplate.placeholders.forEach(placeholder => {
-        const value = formData[placeholder.name] || ''
-        content = content.replace(`{${placeholder.name}}`, value)
-      })
-
-      // Generate AI-enhanced content
+      // Generate AI-enhanced content using raw template
       const response = await aiTemplatesAPI.generateContent(selectedTemplate.id, {
-        ...formData,
-        tone,
-        template: content
+        tone: selectedTone || 'professional',
+        template: selectedTemplate.template
       })
 
-      setGeneratedContent(response.data?.data?.content || response.data?.content)
+      setGeneratedContent(response.data?.data?.generatedContent || response.data?.generatedContent)
       toast.success('Content generated successfully!')
     } catch (error) {
-      toast.error('Error generating content:', error)
-
-      let content = selectedTemplate.template
-      selectedTemplate.placeholders.forEach(placeholder => {
-        const value = formData[placeholder.name] || `[${placeholder.name}]`
-        content = content.replace(`{${placeholder.name}}`, value)
-      })
-      setGeneratedContent(content)
-      toast.success('Template filled successfully!')
+      toast.error('Error generating content')
+      setGeneratedContent(selectedTemplate.template)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -248,77 +281,6 @@ const AITemplates = () => {
       template: selectedTemplate.name
     })
     router.push(`/one-page-tabs?tab=create-post&${queryParams.toString()}`)
-  }
-
-  const renderFormField = placeholder => {
-    const { name, type, required } = placeholder
-
-    switch (type) {
-      case 'textarea':
-        return (
-          <TextField
-            key={name}
-            fullWidth
-            size='small'
-            multiline
-            rows={3}
-            label={name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            sx={{ mb: 2 }}
-          />
-        )
-
-      case 'number':
-        return (
-          <TextField
-            key={name}
-            fullWidth
-            type='number'
-            label={name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            sx={{ mb: 2 }}
-          />
-        )
-
-      case 'date':
-        return (
-          <DatePickerWrapper key={name} sx={{ mb: 2 }}>
-            <DatePicker
-              selected={formData[name] ? new Date(formData[name]) : null}
-              onChange={date => {
-                // Add 12 hours to avoid timezone shifting to previous day
-                const safeDate = date
-                  ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-                  : ''
-                setFormData(prev => ({ ...prev, [name]: safeDate }))
-              }}
-              customInput={
-                <CustomDateInput
-                  label={name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  required={required}
-                />
-              }
-            />
-          </DatePickerWrapper>
-        )
-
-      default:
-        return (
-          <TextField
-            key={name}
-            fullWidth
-            label={name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            sx={{ mb: 3 }}
-          />
-        )
-    }
   }
 
   return (
@@ -334,7 +296,14 @@ const AITemplates = () => {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button variant='contained' startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+          <Button
+            variant='contained'
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditingTemplate(null)
+              setCreateDialogOpen(true)
+            }}
+          >
             Create Template
           </Button>
         </Box>
@@ -343,6 +312,8 @@ const AITemplates = () => {
       {/* Templates Grid */}
       <Template
         handleUseTemplate={handleUseTemplate}
+        handleEditTemplate={handleEditTemplate}
+        handleDeleteTemplate={handleDeleteTemplate}
         getCategoryColor={getCategoryColor}
         getCategoryIcon={getCategoryIcon}
         templates={templates}
@@ -350,7 +321,6 @@ const AITemplates = () => {
 
       {/* Generate Content Dialog */}
       <GenerateDialog
-        renderFormField={renderFormField}
         handleUseContent={handleUseContent}
         handleGenerateContent={handleGenerateContent}
         generateDialogOpen={generateDialogOpen}
@@ -359,12 +329,20 @@ const AITemplates = () => {
         generatedContent={generatedContent}
         setGeneratedContent={setGeneratedContent}
         loading={loading}
+        selectedTone={selectedTone}
+        setSelectedTone={setSelectedTone}
+        getCategoryColor={getCategoryColor}
+        getCategoryIcon={getCategoryIcon}
       />
 
       {/* Create Template Dialog */}
       <CreateTemplateDialog
         open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
+        editingTemplate={editingTemplate}
+        onClose={() => {
+          setCreateDialogOpen(false)
+          setEditingTemplate(null)
+        }}
         onSave={handleSaveCustomTemplate}
       />
 
@@ -379,6 +357,17 @@ const AITemplates = () => {
           toast.success('Content copied to clipboard!')
           router.push({ pathname: '/one-page-tabs', query: { tab: 'create-post' } })
         }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        templateName={templateToDelete?.name || ''}
+        onClose={() => {
+          setDeleteDialogOpen(false)
+          setTemplateToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
       />
     </Box>
   )

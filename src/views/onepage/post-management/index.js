@@ -22,7 +22,10 @@ import {
   Paper,
   Tab,
   Tabs,
-  Typography
+  Typography,
+  Backdrop,
+  CircularProgress,
+  Stack
 } from '@mui/material'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -55,6 +58,7 @@ const PostManagement = () => {
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [connectedAccounts, setConnectedAccounts] = useState([])
   const [open, setOpen] = useState(false)
+  const [processing, setProcessing] = useState({ active: false, message: '' })
 
   // console.log(posts, 'posts')
 
@@ -200,36 +204,76 @@ const PostManagement = () => {
   }
 
   const handleDuplicatePost = async post => {
+    setMenuAnchor(null)
+    setProcessing({ active: true, message: 'Duplicating your post...' })
     try {
-      await postsAPI.duplicatePost(post.id)
-      toast.success('Post duplicated successfully')
-      fetchPosts()
+      const response = await postsAPI.duplicatePost(post.id)
+      const result = response.data?.data || response.data
+      if (result.success) {
+        toast.success('Post duplicated successfully')
+        fetchPosts()
+      } else {
+        toast.error('Failed to duplicate post')
+      }
     } catch (error) {
       toast.error('Failed to duplicate post')
+    } finally {
+      setProcessing({ active: false, message: '' })
     }
-    setMenuAnchor(null)
   }
 
   const handlePublishNow = async post => {
+    setMenuAnchor(null)
+    setProcessing({ active: true, message: 'Publishing to social platforms...' })
     try {
-      await postsAPI.publishNow(post.id)
-      toast.success('Post published successfully')
+      const response = await postsAPI.publishNow(post.id)
+      const result = response.data?.data || response.data
+      if (result.success) {
+        toast.success('Post published successfully')
+      } else {
+        const errors = result.errors || []
+        if (errors.length > 0) {
+          errors.forEach(err => {
+            toast.error(`${err.provider}: ${err.error}`)
+          })
+        } else {
+          toast.error('Publishing failed: Unknown error')
+        }
+      }
       fetchPosts()
     } catch (error) {
-      toast.error('Failed to publish post')
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to publish post'
+      toast.error(errorMsg)
+    } finally {
+      setProcessing({ active: false, message: '' })
     }
-    setMenuAnchor(null)
   }
 
   const handleRetryPost = async post => {
+    setMenuAnchor(null)
+    setProcessing({ active: true, message: 'Retrying publication...' })
     try {
-      await postsAPI.publishNow(post.id)
-      toast.success('Post retry initiated')
+      const response = await postsAPI.publishNow(post.id)
+      const result = response.data?.data || response.data
+      if (result.success) {
+        toast.success('Post retry initiated successfully')
+      } else {
+        const errors = result.errors || []
+        if (errors.length > 0) {
+          errors.forEach(err => {
+            toast.error(`${err.provider}: ${err.error}`)
+          })
+        } else {
+          toast.error('Retry failed: Unknown error')
+        }
+      }
       fetchPosts()
     } catch (error) {
-      toast.error('Failed to retry post')
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to retry post'
+      toast.error(errorMsg)
+    } finally {
+      setProcessing({ active: false, message: '' })
     }
-    setMenuAnchor(null)
   }
 
   const handlePlatformToggle = accountId => {
@@ -310,6 +354,7 @@ const PostManagement = () => {
 
     try {
       setLoading(true)
+      setProcessing({ active: true, message: 'Saving changes...' })
 
       // Identify new files that need uploading (those with a 'file' property)
       const newFiles = editFormData.mediaFiles.filter(f => f.file).map(f => f.file)
@@ -376,17 +421,21 @@ const PostManagement = () => {
       toast.error('Failed to update post')
     } finally {
       setLoading(false)
+      setProcessing({ active: false, message: '' })
     }
   }
 
   const handleConfirmDelete = async () => {
+    setDeleteDialogOpen(false)
+    setProcessing({ active: true, message: 'Deleting post...' })
     try {
       await api.delete(`/v1/social-media-post/scheduled/${selectedPost.id}`)
       toast.success('Post deleted successfully')
-      setDeleteDialogOpen(false)
       fetchPosts()
     } catch (error) {
       toast.error('Failed to delete post')
+    } finally {
+      setProcessing({ active: false, message: '' })
     }
   }
 
@@ -558,6 +607,7 @@ const PostManagement = () => {
             platformFilter={platformFilter}
             statusFilter={statusFilter}
             loading={loading}
+            onOpenCreatePost={() => setOpen(true)}
           />
 
           {/* Pagination */}
@@ -576,10 +626,14 @@ const PostManagement = () => {
 
         {/* Action Menu */}
         <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-          <MenuItem onClick={() => handleEditPost(selectedPost)}>
-            <EditIcon sx={{ mr: 2 }} />
-            Edit Post
-          </MenuItem>
+          {selectedPost?.status !== 'PUBLISHED' &&
+            selectedPost?.status !== 'PARTIAL' &&
+            selectedPost?.status !== 'PROCESSING' && (
+              <MenuItem onClick={() => handleEditPost(selectedPost)}>
+                <EditIcon sx={{ mr: 2 }} />
+                Edit Post
+              </MenuItem>
+            )}
           <MenuItem onClick={() => handleDuplicatePost(selectedPost)}>
             <ContentCopyIcon sx={{ mr: 2 }} />
             Duplicate
@@ -632,7 +686,71 @@ const PostManagement = () => {
           handleConfirmDelete={handleConfirmDelete}
         />
 
-        <CreatePostDialog open={open} onClose={() => setOpen(false)} />
+        <CreatePostDialog open={open} onClose={() => setOpen(false)} onSuccess={fetchPosts} />
+
+        {/* Action Processor Backdrop */}
+        <Backdrop
+          sx={{
+            zIndex: theme => theme.zIndex.drawer + 999,
+            color: '#fff',
+            backdropFilter: 'blur(8px)',
+            bgcolor: 'rgba(15, 23, 42, 0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3
+          }}
+          open={processing.active}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <CircularProgress
+              size={70}
+              thickness={4}
+              sx={{
+                color: '#3B82F6',
+                '& .MuiCircularProgress-circle': {
+                  strokeLinecap: 'round'
+                }
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '12px',
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <PublishIcon sx={{ color: '#FACC15' }} />
+              </Box>
+            </Box>
+          </Box>
+          <Stack spacing={1} alignItems='center'>
+            <Typography variant='h6' sx={{ fontWeight: 800, letterSpacing: '-0.02em', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+              {processing.message}
+            </Typography>
+            <Typography variant='caption' sx={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Creative Studio is processing
+            </Typography>
+          </Stack>
+        </Backdrop>
       </Box>
     </LocalizationProvider>
   )

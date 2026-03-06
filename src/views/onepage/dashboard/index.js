@@ -1,18 +1,17 @@
+import CancelIcon from '@mui/icons-material/Cancel'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import HubIcon from '@mui/icons-material/Hub'
+import PostAddIcon from '@mui/icons-material/PostAdd'
+import TodayIcon from '@mui/icons-material/Today'
 import { Box, Grid, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { activityAPI } from 'src/services/socialMediaService'
 import { facebookLogin } from 'src/utils/facebook'
 import Activity from './components/Activity'
-import FailedPosts from './components/FailedPosts'
 import PlatformStatus from './components/PlatformStatus'
 import RecentPosts from './components/RecentPosts'
 import UpcomingPosts from './components/UpcomingPosts'
-import PostAddIcon from '@mui/icons-material/PostAdd'
-import HubIcon from '@mui/icons-material/Hub'
-import TodayIcon from '@mui/icons-material/Today'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true)
@@ -39,7 +38,7 @@ const Dashboard = () => {
 
       // console.log('Dashboard Stats Response:', response.data)
 
-      const data = response.data?.data || response.data
+      const data = response.data?.data?.data
       if (data) {
         setDashboardStats({
           totalPosts: data.totalPosts || 0,
@@ -171,12 +170,7 @@ const Dashboard = () => {
           <RecentPosts loading={loading} />
         </Grid>
 
-        {/* Failed Posts Alert */}
-        {dashboardStats.failedPosts > 0 && (
-          <Grid item xs={12}>
-            <FailedPosts count={dashboardStats.failedPosts} />
-          </Grid>
-        )}
+      
       </Grid>
     </>
   )

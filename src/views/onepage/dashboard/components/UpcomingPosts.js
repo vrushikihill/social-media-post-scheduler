@@ -171,7 +171,7 @@ const UpcomingPosts = ({ loading: externalLoading }) => {
             <Typography variant='body2' color='text.secondary'>
               No upcoming posts scheduled
             </Typography>
-            <Button variant='outlined' sx={{ mt: 2 }} onClick={() => router.push('/one-page-tabs?tab=create-post')}>
+            <Button variant='outlined' sx={{ mt: 2 }} onClick={() => router.push('/one-page-tabs?tab=post-management')}>
               Schedule Your First Post
             </Button>
           </Box>

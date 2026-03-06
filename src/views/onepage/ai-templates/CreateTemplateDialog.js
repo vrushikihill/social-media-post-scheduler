@@ -1,5 +1,9 @@
 import CloseIcon from '@mui/icons-material/Close'
 import DeleteIcon from '@mui/icons-material/Delete'
+import FacebookIcon from '@mui/icons-material/Facebook'
+import InstagramIcon from '@mui/icons-material/Instagram'
+import LinkedInIcon from '@mui/icons-material/LinkedIn'
+import TwitterIcon from '@mui/icons-material/Twitter'
 import {
   Box,
   Button,
@@ -10,9 +14,20 @@ import {
   IconButton,
   MenuItem,
   TextField,
-  Typography
+  Typography,
+  Chip,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  Tooltip,
+  Grid,
+  Switch,
+  Select
 } from '@mui/material'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const TEMPLATE_CATEGORIES = [
   { value: 'festival', label: 'Festival' },
@@ -24,16 +39,50 @@ const TEMPLATE_CATEGORIES = [
   { value: 'custom', label: 'Custom' }
 ]
 
-const CreateTemplateDialog = ({ open, onClose, onSave }) => {
+const PLATFORMS = [
+  { value: 'facebook', label: 'Facebook', icon: <FacebookIcon /> },
+  { value: 'instagram', label: 'Instagram', icon: <InstagramIcon /> },
+  { value: 'linkedin', label: 'LinkedIn', icon: <LinkedInIcon /> },
+  { value: 'twitter', label: 'Twitter', icon: <TwitterIcon /> }
+]
+
+const TONE_OPTIONS = ['Professional', 'Casual', 'Friendly', 'Exciting', 'Informative', 'Urgent', 'Inspirational', 'Festive']
+
+const CreateTemplateDialog = ({ open, onClose, onSave, editingTemplate }) => {
   const [formData, setFormData] = useState({
     name: '',
     category: 'custom',
     description: '',
     template: '',
+    platforms: ['facebook', 'instagram'],
+    toneOptions: ['professional', 'casual'],
     placeholders: []
   })
 
-  const [newPlaceholder, setNewPlaceholder] = useState({ name: '', type: 'text', required: true })
+  useEffect(() => {
+    if (editingTemplate) {
+      setFormData({
+        id: editingTemplate.id,
+        name: editingTemplate.name || '',
+        category: editingTemplate.category || 'custom',
+        description: editingTemplate.description || '',
+        template: editingTemplate.template || '',
+        platforms: editingTemplate.platforms || ['facebook', 'instagram'],
+        toneOptions: editingTemplate.toneOptions || ['professional', 'casual'],
+        placeholders: editingTemplate.placeholders || []
+      })
+    } else {
+      setFormData({
+        name: '',
+        category: 'custom',
+        description: '',
+        template: '',
+        platforms: ['facebook', 'instagram'],
+        toneOptions: ['professional', 'casual'],
+        placeholders: []
+      })
+    }
+  }, [editingTemplate, open])
 
   const handleClose = () => {
     setFormData({
@@ -41,9 +90,10 @@ const CreateTemplateDialog = ({ open, onClose, onSave }) => {
       category: 'custom',
       description: '',
       template: '',
+      platforms: ['facebook', 'instagram'],
+      toneOptions: ['professional', 'casual'],
       placeholders: []
     })
-    setNewPlaceholder({ name: '', type: 'text', required: true })
     onClose()
   }
 
@@ -53,28 +103,79 @@ const CreateTemplateDialog = ({ open, onClose, onSave }) => {
       ...prev,
       [name]: value
     }))
+
+    // If template changes, sync placeholders
+    if (name === 'template') {
+      syncPlaceholders(value)
+    }
   }
 
-  const handleAddPlaceholder = () => {
-    if (!newPlaceholder.name.trim()) return
+  const syncPlaceholders = templateText => {
+    const variableRegex = /\{([a-zA-Z0-9_]+)\}/g
+    const matches = [...templateText.matchAll(variableRegex)]
+    const variableNames = [...new Set(matches.map(m => m[1]))]
 
-    // Convert spaces to underscores for the placeholder name
-    const formattedName = newPlaceholder.name.toLowerCase().replace(/\s+/g, '_')
+    setFormData(prev => {
+      const existingPlaceholders = [...prev.placeholders]
+      const newPlaceholders = []
 
-    setFormData(prev => ({
-      ...prev,
-      placeholders: [...prev.placeholders, { ...newPlaceholder, name: formattedName }],
-      template: prev.template ? `${prev.template} {${formattedName}}` : `{${formattedName}}`
-    }))
+      // Keep existing metadata for matching variables
+      variableNames.forEach(name => {
+        const existing = existingPlaceholders.find(ph => ph.name === name)
+        if (existing) {
+          newPlaceholders.push({ ...existing, synced: true })
+        } else {
+          newPlaceholders.push({ name, type: 'text', required: true, synced: true })
+        }
+      })
 
-    setNewPlaceholder({ name: '', type: 'text', required: true })
+      // Also keep variables that were manually added but are not in text yet
+      // These will be marked as 'not in text'
+      existingPlaceholders.forEach(ph => {
+        if (!variableNames.includes(ph.name) && !newPlaceholders.find(n => n.name === ph.name)) {
+          newPlaceholders.push({ ...ph, synced: false })
+        }
+      })
+
+      return { ...prev, placeholders: newPlaceholders }
+    })
+  }
+
+
+  const handlePlatformToggle = platform => {
+    setFormData(prev => {
+      const platforms = prev.platforms.includes(platform)
+        ? prev.platforms.filter(p => p !== platform)
+        : [...prev.platforms, platform]
+      return { ...prev, platforms }
+    })
+  }
+
+  const handleToneToggle = tone => {
+    const toneLower = tone.toLowerCase()
+    setFormData(prev => {
+      const toneOptions = prev.toneOptions.includes(toneLower)
+        ? prev.toneOptions.filter(t => t !== toneLower)
+        : [...prev.toneOptions, toneLower]
+      return { ...prev, toneOptions }
+    })
   }
 
   const handleRemovePlaceholder = index => {
-    setFormData(prev => ({
-      ...prev,
-      placeholders: prev.placeholders.filter((_, i) => i !== index)
-    }))
+    setFormData(prev => {
+      const phToRemove = prev.placeholders[index]
+      const newPlaceholders = prev.placeholders.filter((_, i) => i !== index)
+
+      // Also remove from template text
+      const variablePattern = new RegExp(`\\{${phToRemove.name}\\}`, 'g')
+      const newTemplate = prev.template.replace(variablePattern, '')
+
+      return {
+        ...prev,
+        placeholders: newPlaceholders,
+        template: newTemplate
+      }
+    })
   }
 
   const handleSubmit = e => {
@@ -82,13 +183,13 @@ const CreateTemplateDialog = ({ open, onClose, onSave }) => {
 
     // Create the template object matching the app's standard structure
     const newTemplate = {
-      id: `custom_${Date.now()}`,
+      id: editingTemplate ? editingTemplate.id : `custom_${Date.now()}`,
       name: formData.name,
       category: formData.category,
       description: formData.description,
       template: formData.template,
-      platforms: ['facebook', 'instagram', 'linkedin', 'twitter'],
-      toneOptions: ['professional', 'casual', 'friendly', 'exciting', 'informative'],
+      platforms: formData.platforms,
+      toneOptions: formData.toneOptions,
       placeholders: formData.placeholders,
       isCustom: true // identify this as a user-made template
     }
@@ -101,7 +202,7 @@ const CreateTemplateDialog = ({ open, onClose, onSave }) => {
     <Dialog open={open} onClose={handleClose} maxWidth='md' fullWidth>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant='h6' component='span' fontWeight={600}>
-          Create Custom Template
+          {editingTemplate ? 'Edit Custom Template' : 'Create Custom Template'}
         </Typography>
         <IconButton onClick={handleClose} size='small'>
           <CloseIcon />
@@ -147,7 +248,76 @@ const CreateTemplateDialog = ({ open, onClose, onSave }) => {
               onChange={handleChange}
               required
               placeholder='Briefly describe what this template is used for...'
+              sx={{
+                '& .MuiOutlinedInput-root': { borderRadius: 2 }
+              }}
             />
+
+            <Grid container spacing={4}>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ p: 4, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                  <Typography variant='subtitle2' fontWeight={600} gutterBottom color='primary'>
+                    Target Platforms
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 2 }}>
+                    Where should this post be shared?
+                  </Typography>
+                  <Stack direction='row' spacing={1}>
+                    {PLATFORMS.map(platform => (
+                      <Tooltip key={platform.value} title={platform.label}>
+                        <ToggleButton
+                          value={platform.value}
+                          selected={formData.platforms.includes(platform.value)}
+                          onChange={() => handlePlatformToggle(platform.value)}
+                          sx={{
+                            borderRadius: 2,
+                            width: 50,
+                            height: 50,
+                            transition: 'all 0.2s',
+                            '&.Mui-selected': {
+                              bgcolor: 'primary.main',
+                              color: 'white',
+                              transform: 'scale(1.05)',
+                              '&:hover': { bgcolor: 'primary.dark' }
+                            }
+                          }}
+                        >
+                          {platform.icon}
+                        </ToggleButton>
+                      </Tooltip>
+                    ))}
+                  </Stack>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Box sx={{ p: 4, border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%' }}>
+                  <Typography variant='subtitle2' fontWeight={600} gutterBottom color='primary'>
+                    Tone Options
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 2 }}>
+                    Select available styles for AI generation
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {TONE_OPTIONS.map(tone => (
+                      <Chip
+                        key={tone}
+                        label={tone}
+                        onClick={() => handleToneToggle(tone)}
+                        color={formData.toneOptions.includes(tone.toLowerCase()) ? 'primary' : 'default'}
+                        variant={formData.toneOptions.includes(tone.toLowerCase()) ? 'contained' : 'outlined'}
+                        sx={{
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': { opacity: 0.8 }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
 
             <Box sx={{ mt: 1 }}>
               <Typography variant='subtitle2' fontWeight={600} gutterBottom>
@@ -167,89 +337,33 @@ const CreateTemplateDialog = ({ open, onClose, onSave }) => {
                 onChange={handleChange}
                 required
                 placeholder='Welcome {employee_name} to the team! We are so excited to have you join us as a {role}. #welcome #newhire'
+                sx={{ mb: 2 }}
               />
-            </Box>
 
-            <Box sx={{ mt: 1, p: 4, bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant='subtitle2' fontWeight={600} gutterBottom>
-                Define Variables (Optional)
-              </Typography>
-              <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 2 }}>
-                Add form fields for users to fill in before generating the content.
-              </Typography>
-
-              {formData.placeholders.length > 0 && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-                  {formData.placeholders.map((ph, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1,
-                        bgcolor: 'background.paper',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider'
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        <Typography variant='body2' fontWeight={600} fontFamily='monospace'>
-                          {'{' + ph.name + '}'}
-                        </Typography>
-                        <Typography variant='caption' color='text.secondary'>
-                          ({ph.type}, {ph.required ? 'required' : 'optional'})
-                        </Typography>
-                      </Box>
-                      <IconButton size='small' color='error' onClick={() => handleRemovePlaceholder(index)}>
-                        <DeleteIcon fontSize='small' />
-                      </IconButton>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                <TextField
-                  size='small'
-                  label='Variable Name'
-                  value={newPlaceholder.name}
-                  onChange={e => setNewPlaceholder({ ...newPlaceholder, name: e.target.value })}
-                  placeholder='e.g., employee_name'
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  size='small'
-                  select
-                  label='Type'
-                  value={newPlaceholder.type}
-                  onChange={e => setNewPlaceholder({ ...newPlaceholder, type: e.target.value })}
-                  sx={{ width: 120 }}
-                >
-                  <MenuItem value='text'>Text</MenuItem>
-                  <MenuItem value='textarea'>Textarea</MenuItem>
-                  <MenuItem value='number'>Number</MenuItem>
-                  <MenuItem value='date'>Date</MenuItem>
-                </TextField>
-                <Button
-                  variant='outlined'
-                  onClick={handleAddPlaceholder}
-                  disabled={!newPlaceholder.name.trim()}
-                  sx={{ height: 40 }}
-                >
-                  Add
-                </Button>
-              </Box>
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 6 }}>
-          <Button onClick={handleClose} variant='outlined' color='error'>
+        <DialogActions sx={{ p: 6, gap: 2 }}>
+          <Button onClick={handleClose} variant='outlined' color='inherit' sx={{ borderRadius: 2, px: 4 }}>
             Cancel
           </Button>
-          <Button type='submit' variant='contained' disabled={!formData.name || !formData.template}>
-            Save Template
+          <Button
+            type='submit'
+            variant='contained'
+            disabled={
+              !formData.name ||
+              !formData.template ||
+              formData.platforms.length === 0 ||
+              formData.toneOptions.length === 0
+            }
+            sx={{
+              borderRadius: 2,
+              px: 6,
+              background: 'linear-gradient(45deg, #3f51b5 30%, #5c6bc0 90%)',
+              boxShadow: '0 3px 5px 2px rgba(63, 81, 181, .3)'
+            }}
+          >
+            {editingTemplate ? 'Update Template' : 'Save Template'}
           </Button>
         </DialogActions>
       </form>

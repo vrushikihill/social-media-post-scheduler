@@ -80,6 +80,7 @@ const TemplateSelectionDialog = ({ open, onClose, onSelectContent }) => {
   const [formData, setFormData] = useState({})
   const [generatedContent, setGeneratedContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedTone, setSelectedTone] = useState(null)
 
   useEffect(() => {
     if (open) {
@@ -129,41 +130,26 @@ const TemplateSelectionDialog = ({ open, onClose, onSelectContent }) => {
   const handleUseTemplate = template => {
     setSelectedTemplate(template)
     setFormData({})
-    setGeneratedContent('')
+    setGeneratedContent(template.template)
+    setSelectedTone(null)
     setGenerateDialogOpen(true)
   }
 
-  const handleGenerateContent = async (tone = 'professional') => {
+  const handleGenerateContent = async () => {
     try {
       setLoading(true)
 
-      // Fill template with form data
-      let content = selectedTemplate.template
-      selectedTemplate.placeholders?.forEach(placeholder => {
-        const value = formData[placeholder.name] || ''
-        content = content.replace(`{${placeholder.name}}`, value)
-      })
-
-      // Generate AI-enhanced content
+      // Generate AI-enhanced content using raw template
       const response = await aiTemplatesAPI.generateContent(selectedTemplate.id, {
-        ...formData,
-        tone,
-        template: content
+        tone: selectedTone || 'professional',
+        template: selectedTemplate.template
       })
 
-      setGeneratedContent(response.data?.data?.content || response.data?.content || content)
+      setGeneratedContent(response.data?.data?.generatedContent || response.data?.generatedContent || selectedTemplate.template)
       toast.success('Content generated successfully!')
     } catch (error) {
       toast.error('AI API Error, falling back to basic template text')
-
-      // Fallback
-      let content = selectedTemplate.template
-      selectedTemplate.placeholders?.forEach(placeholder => {
-        const value = formData[placeholder.name] || `[${placeholder.name}]`
-        content = content.replace(`{${placeholder.name}}`, value)
-      })
-      setGeneratedContent(content)
-      toast.success('Template filled successfully!')
+      setGeneratedContent(selectedTemplate.template)
     } finally {
       setLoading(false)
     }
@@ -177,70 +163,7 @@ const TemplateSelectionDialog = ({ open, onClose, onSelectContent }) => {
     }
   }
 
-  // Render form field is adapted from ai-templates/index.js
-  const renderFormField = placeholder => {
-    const { name, type, required } = placeholder
-    const label = name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
 
-    switch (type) {
-      case 'textarea':
-        return (
-          <TextField
-            key={name}
-            fullWidth
-            size='small'
-            multiline
-            rows={3}
-            label={label}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            sx={{ mb: 2 }}
-          />
-        )
-      case 'number':
-        return (
-          <TextField
-            key={name}
-            fullWidth
-            type='number'
-            label={label}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            sx={{ mb: 2 }}
-          />
-        )
-      case 'date':
-        return (
-          <DatePickerWrapper key={name} sx={{ mb: 2 }}>
-            <DatePicker
-              selected={formData[name] ? new Date(formData[name]) : null}
-              onChange={date => {
-                // Add 12 hours to avoid timezone shifting to previous day
-                const safeDate = date
-                  ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-                  : ''
-                setFormData(prev => ({ ...prev, [name]: safeDate }))
-              }}
-              customInput={<CustomDateInput label={label} required={required} />}
-            />
-          </DatePickerWrapper>
-        )
-      default:
-        return (
-          <TextField
-            key={name}
-            fullWidth
-            label={label}
-            value={formData[name] || ''}
-            onChange={e => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-            required={required}
-            sx={{ mb: 3 }}
-          />
-        )
-    }
-  }
 
   return (
     <>
@@ -322,7 +245,6 @@ const TemplateSelectionDialog = ({ open, onClose, onSelectContent }) => {
 
       {/* Reusing the GenerateContent Dialog */}
       <GenerateDialog
-        renderFormField={renderFormField}
         handleUseContent={handleApplyContent}
         handleGenerateContent={handleGenerateContent}
         generateDialogOpen={generateDialogOpen}
@@ -331,6 +253,10 @@ const TemplateSelectionDialog = ({ open, onClose, onSelectContent }) => {
         generatedContent={generatedContent}
         setGeneratedContent={setGeneratedContent}
         loading={loading}
+        selectedTone={selectedTone}
+        setSelectedTone={setSelectedTone}
+        getCategoryColor={getCategoryColor}
+        getCategoryIcon={getCategoryIcon}
       />
     </>
   )

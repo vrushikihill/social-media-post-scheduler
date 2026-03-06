@@ -3,7 +3,14 @@ import { Box, Button, IconButton, Typography } from '@mui/material'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import CloseIcon from '@mui/icons-material/Close'
 
-export const Header = ({ showPreview, setShowPreview, onClose, onAIAssistantClick, onTemplateClick }) => {
+export const Header = ({
+  showPreview,
+  setShowPreview,
+  onClose,
+  onAIAssistantClick,
+  onTemplateClick,
+  isSubmitting
+}) => {
   return (
     <Box
       sx={{
@@ -24,7 +31,7 @@ export const Header = ({ showPreview, setShowPreview, onClose, onAIAssistantClic
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <Button size='small' variant='outlined' onClick={onTemplateClick}>
+        <Button size='small' variant='outlined' onClick={onTemplateClick} disabled={isSubmitting}>
           Templates
         </Button>
         <Button
@@ -32,6 +39,7 @@ export const Header = ({ showPreview, setShowPreview, onClose, onAIAssistantClic
           variant='outlined'
           startIcon={<AutoAwesomeIcon sx={{ fontSize: 16 }} />}
           onClick={onAIAssistantClick}
+          disabled={isSubmitting}
         >
           AI Assistant
         </Button>
@@ -41,11 +49,13 @@ export const Header = ({ showPreview, setShowPreview, onClose, onAIAssistantClic
           color={showPreview ? 'primary' : 'inherit'}
           onClick={() => setShowPreview(!showPreview)}
           sx={{ color: !showPreview ? 'text.secondary' : undefined }}
+          disabled={isSubmitting}
         >
           Preview
         </Button>
         <IconButton
           onClick={onClose}
+          disabled={isSubmitting}
           sx={{
             color: 'text.secondary',
             '&:hover': {

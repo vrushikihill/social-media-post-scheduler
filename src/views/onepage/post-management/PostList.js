@@ -29,7 +29,8 @@ const PostList = ({
   setMenuAnchor,
   searchQuery,
   platformFilter,
-  statusFilter
+  statusFilter,
+  onOpenCreatePost
 }) => {
   const router = useRouter()
 
@@ -46,7 +47,7 @@ const PostList = ({
               : 'Create your first post to get started'}
           </Typography>
           {!searchQuery && !platformFilter && !statusFilter && (
-            <Button variant='contained' onClick={() => router.push('/one-page-tabs?tab=create-post')}>
+            <Button variant='contained' onClick={() => onOpenCreatePost()}>
               Create New Post
             </Button>
           )}

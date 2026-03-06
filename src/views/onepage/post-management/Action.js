@@ -20,10 +20,14 @@ const Action = ({
 
   return (
     <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-      <MenuItem onClick={() => router.push(`/one-page-tabs?tab=create-post&edit=${selectedPost?.id}`)}>
-        <EditIcon sx={{ mr: 1 }} />
-        Edit Post
-      </MenuItem>
+      {selectedPost?.status !== 'PUBLISHED' &&
+        selectedPost?.status !== 'PARTIAL' &&
+        selectedPost?.status !== 'PROCESSING' && (
+          <MenuItem onClick={() => router.push(`/one-page-tabs?tab=create-post&edit=${selectedPost?.id}`)}>
+            <EditIcon sx={{ mr: 1 }} />
+            Edit Post
+          </MenuItem>
+        )}
       <MenuItem onClick={() => handleDuplicatePost(selectedPost)}>
         <ContentCopyIcon sx={{ mr: 1 }} />
         Duplicate

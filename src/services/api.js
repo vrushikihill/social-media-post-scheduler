@@ -3,7 +3,7 @@ import axios from 'axios'
 // Create axios instance
 const api = axios.create({
   baseURL: process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
-  timeout: 10000
+  timeout: 300000
 
   // headers: { 'Content-Type': 'application/json' }  <-- Removed to support FormData
 })
